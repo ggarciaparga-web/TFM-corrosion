@@ -63,7 +63,6 @@ if tipo_ataque == "Carbonatación":
         st.write("### Resultados")
         if t_ini:
             st.metric("Tiempo de Iniciación", f"{t_ini:.2f} años")
-            st.info(f"El frente de carbonatación alcanza los {d_mm} mm a los {t_ini:.2f} años.")
         else:
             st.error(f"No se alcanza la armadura en {t_ana} años.")
         
