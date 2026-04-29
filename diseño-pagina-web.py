@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import calculations as calc
+import tiempo-iniciacion as calc
 
 # --- CONFIGURACIÓN DE PÁGINA Y ESTILO ETH ---
 st.set_page_config(page_title="Concrete Durability App | ETH Style", layout="wide")
