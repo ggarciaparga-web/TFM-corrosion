@@ -48,7 +48,7 @@ if 'tipo_ataque' not in st.session_state:
     st.session_state['tipo_ataque'] = "Carbonatación"
 
 # --- CREACIÓN DE PESTAÑAS ---
-tab_ini, tab_mc = st.tabs(["🕒 Tiempo de Iniciación", "🏗️ Model Code (Capacidad Residual)"])
+tab_ini, tab_mc = st.tabs(["Tiempo de Iniciación", " Model Code (Capacidad Residual)"])
 
 # ==========================================
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
@@ -135,14 +135,16 @@ with tab_mc:
     with c1:
         h = st.number_input("Canto h [mm]", value=300)
         b = st.number_input("Ancho b [mm]", value=150)
-        t_ana_mc = st.number_input("Tiempo análisis estructural [años]", value=100)
-    with c2:
         rec_sup = st.number_input("Recubrimiento Sup. [mm]", value=20)
         rec_inf = st.number_input("Recubrimiento Inf. [mm]", value=20)
+        t_ana_mc = st.number_input("Tiempo análisis estructural [años]", value=100)
+    with c2:
+        fck = st.number_input("fck [MPa]", value=25)
         fyk = st.number_input("fyk [MPa]", value=500)
     with c3:
-        fck = st.number_input("fck [MPa]", value=25)
         icorr = st.number_input("Intensidad corrosión $i_{corr}$", value=0.5)
+        n_sup=st.number_input("Nº barras sup.",value=2)
+        phi_sup_0 = st.number_input("Φ barras sup. [mm]", value=16)
         n_inf = st.number_input("Nº barras inf.", value=2)
         phi_inf_0 = st.number_input("Φ barras inf. [mm]", value=16)
 
