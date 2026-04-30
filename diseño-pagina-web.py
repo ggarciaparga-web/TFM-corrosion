@@ -8,7 +8,7 @@ from calculos import Modelcode as calc_mc
 from calculos import Contevect as calc_cv
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Concrete Durability & Model Code Tool", layout="wide")
+st.set_page_config(page_title="Concrete Durability & Structural Capacity Tool", layout="wide")
 
 # --- CSS PARA ESTILO ETH / IBK ---
 st.markdown("""
@@ -55,6 +55,7 @@ with head_col1:
     st.markdown('<p class="title-text">Plataforma de Durabilidad y Capacidad Residual</p>', unsafe_allow_html=True)
 
 with head_col2:
+    # Tiempo de estudio global para toda la aplicación
     t_global = st.number_input("Tiempo de estudio total [años]", value=100, step=1, key="global_time")
 
 # --- INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
@@ -143,7 +144,7 @@ with tab_mc:
     px_limit = 0.05 if atk_type == "Carbonatación" else 0.5 # mm
 
     st.subheader("Geometría y Parámetros Estructurales")
-    st.info(f"Análisis vinculado a **t_ini = {t_ini_ref:.2f} años** | Alpha = {alpha_v} | Límite $p_x$ = {px_limit} mm")
+    st.info(f"Análisis basado en **t_ini = {t_ini_ref:.2f} años** | Alpha = {alpha_v} | Límite $p_x$ = {px_limit} mm")
 
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -166,9 +167,9 @@ with tab_mc:
         fyk, fck, icorr, alpha_v, t_ini_ref
     )
 
-    # 2. Contevect
-    _, _, m_vect = calc_cv.calcular_contevect(
-        t_global, b, h, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, 
+    # 2. Contevect (Lógica de puntos críticos e interpolación)
+    t_cv, df_crit, m_vect = calc_cv.calcular_contevect(
+        t_global, b, h, rec_sup, rec_inf, n_inf, phi_inf_0, 
         fyk, fck, icorr, alpha_v, t_ini_ref
     )
 
@@ -182,16 +183,29 @@ with tab_mc:
     with g1:
         st.write("### Momento Resistente $M_{Rd}$ vs Tiempo")
         fig_m_t = go.Figure()
-        fig_m_t.add_trace(go.Scatter(x=t_v, y=m_res, name="MC Approach 1", line=dict(color='#e17000', width=3)))
+        
+        # Líneas Model Code
+        fig_m_t.add_trace(go.Scatter(x=t_v, y=m_res, name="MC Approach 1", line=dict(color='#e17000', width=2)))
         fig_m_t.add_trace(go.Scatter(x=t_v, y=m_cons, name="MC Conservative", line=dict(color='#333', dash='dash')))
-        fig_m_t.add_trace(go.Scatter(x=t_v, y=m_vect, name="Contevect", line=dict(color='#005293', width=2)))
+        
+        # Línea Contevect (Interpolada)
+        fig_m_t.add_trace(go.Scatter(x=t_cv, y=m_vect, name="Contevect (Interp)", line=dict(color='#005293', width=3)))
+        
+        # Marcadores de Puntos Críticos Contevect
+        fig_m_t.add_trace(go.Scatter(
+            x=df_crit["Tiempo"], y=df_crit["Mu"], 
+            mode='markers+text', name="Puntos Clave Contevect",
+            marker=dict(color='red', size=10, symbol='diamond'),
+            text=["P0", "P1", "P2", "P3", "P4"][:len(df_crit)],
+            textposition="top left"
+        ))
         
         if t_els:
             fig_m_t.add_vline(x=t_els, line_dash="dot", line_color="red", annotation_text=f"ELS: {t_els:.1f} a")
         
         fig_m_t.update_layout(plot_bgcolor='white', xaxis_title="Tiempo [años]", yaxis_title="Mrd [kNm]",
                             xaxis=dict(range=[0, t_global], showgrid=True, gridcolor='#eee'),
-                            yaxis=dict(range=[0, max(m_res)*1.1], showgrid=True, gridcolor='#eee'),
+                            yaxis=dict(range=[0, max(max(m_res), max(m_vect))*1.1], showgrid=True, gridcolor='#eee'),
                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig_m_t, use_container_width=True)
 
@@ -199,7 +213,7 @@ with tab_mc:
         st.write("### Momento Resistente $M_{Rd}$ vs Profundidad $p_x$")
         fig_m_px = go.Figure()
         fig_m_px.add_trace(go.Scatter(x=px_v, y=m_res, name="MC App 1", line=dict(color='#e17000', width=3)))
-        fig_m_px.add_trace(go.Scatter(x=px_v, y=m_vect, name="Contevect", line=dict(color='#005293', width=2)))
+        fig_m_px.add_trace(go.Scatter(x=t_cv, y=m_vect, name="Contevect", line=dict(color='#005293', width=2)))
         
         fig_m_px.add_vline(x=px_limit, line_dash="dash", line_color="red", annotation_text=f"Límite {px_limit}mm")
         
@@ -209,5 +223,8 @@ with tab_mc:
                              legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig_m_px, use_container_width=True)
 
-    if t_els:
-        st.success(f"**Estado Límite de Servicio:** Límite normativo alcanzado a los {t_els:.2f} años.")
+    # Mostrar Matriz de Puntos Críticos (Contevect)
+    with st.expander("Ver Matriz de Puntos Críticos (Contevect)"):
+        st.dataframe(df_crit[["Tiempo", "Px", "b", "d", "A1", "Mu"]].style.format({
+            "Tiempo": "{:.1f}", "Px": "{:.4f}", "b": "{:.1f}", "d": "{:.1f}", "A1": "{:.1f}", "Mu": "{:.2f}"
+        }))
