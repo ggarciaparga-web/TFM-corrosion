@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 # Importamos los módulos de la carpeta calculos
 from calculos import tiempoiniciacion as calc_ini
 from calculos import Modelcode as calc_mc
+from calculos import Contevect as calc_cv
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Concrete Durability & Model Code Tool", layout="wide")
@@ -54,7 +55,6 @@ with head_col1:
     st.markdown('<p class="title-text">Plataforma de Durabilidad y Capacidad Residual</p>', unsafe_allow_html=True)
 
 with head_col2:
-    # Tiempo de estudio global para toda la aplicación
     t_global = st.number_input("Tiempo de estudio total [años]", value=100, step=1, key="global_time")
 
 # --- INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
@@ -64,7 +64,7 @@ if 'tipo_ataque' not in st.session_state:
     st.session_state['tipo_ataque'] = "Carbonatación"
 
 # --- CREACIÓN DE PESTAÑAS ---
-tab_ini, tab_mc = st.tabs(["🕒 Tiempo de Iniciación", "🏗️ Model Code (Capacidad Residual)"])
+tab_ini, tab_mc = st.tabs(["🕒 Tiempo de Iniciación", "🏗️ Capacidad Estructural (Comparativa)"])
 
 # ==========================================
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
@@ -134,16 +134,16 @@ with tab_ini:
         st.plotly_chart(fig_ini, use_container_width=True)
 
 # ==========================================
-# PESTAÑA 2: MODEL CODE
+# PESTAÑA 2: CAPACIDAD ESTRUCTURAL
 # ==========================================
 with tab_mc:
     t_ini_ref = st.session_state['t_ini_res']
     atk_type = st.session_state['tipo_ataque']
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
-    px_limit = 0.05 if atk_type == "Carbonatación" else 0.5 # mm (50 y 500 micras)
+    px_limit = 0.05 if atk_type == "Carbonatación" else 0.5 # mm
 
     st.subheader("Geometría y Parámetros Estructurales")
-    st.info(f"Análisis vinculado a **t_ini = {t_ini_ref:.2f} años** | Límite normativo $p_x$ = {px_limit} mm")
+    st.info(f"Análisis vinculado a **t_ini = {t_ini_ref:.2f} años** | Alpha = {alpha_v} | Límite $p_x$ = {px_limit} mm")
 
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -159,13 +159,20 @@ with tab_mc:
         n_inf = st.number_input("Nº barras inferiores", value=2)
         phi_inf_0 = st.number_input("Diámetro Φ inferior [mm]", value=16)
 
-    # Cálculo Model Code (usando t_global compartido)
+    # --- CÁLCULOS ---
+    # 1. Model Code (Approach 1 y 2)
     t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(
         t_global, b, h, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, 
         fyk, fck, icorr, alpha_v, t_ini_ref
     )
 
-    # Identificar tiempo donde se alcanza el px_límite
+    # 2. Contevect
+    _, _, m_vect = calc_cv.calcular_contevect(
+        t_global, b, h, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, 
+        fyk, fck, icorr, alpha_v, t_ini_ref
+    )
+
+    # Identificar tiempo ELS (basado en Model Code px)
     idx_lim = np.where(px_v >= px_limit)[0]
     t_els = t_v[idx_lim[0]] if len(idx_lim) > 0 else None
 
@@ -173,26 +180,34 @@ with tab_mc:
     g1, g2 = st.columns(2)
 
     with g1:
-        st.write("### Capacidad Resistente $M_{Rd}$ vs Tiempo")
+        st.write("### Momento Resistente $M_{Rd}$ vs Tiempo")
         fig_m_t = go.Figure()
-        fig_m_t.add_trace(go.Scatter(x=t_v, y=m_res, name="Mrd (Approach 1)", line=dict(color='#e17000', width=3)))
-        fig_m_t.add_trace(go.Scatter(x=t_v, y=m_cons, name="Mrd (Conservative)", line=dict(color='#333', dash='dash')))
+        fig_m_t.add_trace(go.Scatter(x=t_v, y=m_res, name="MC Approach 1", line=dict(color='#e17000', width=3)))
+        fig_m_t.add_trace(go.Scatter(x=t_v, y=m_cons, name="MC Conservative", line=dict(color='#333', dash='dash')))
+        fig_m_t.add_trace(go.Scatter(x=t_v, y=m_vect, name="Contevect", line=dict(color='#005293', width=2)))
+        
         if t_els:
             fig_m_t.add_vline(x=t_els, line_dash="dot", line_color="red", annotation_text=f"ELS: {t_els:.1f} a")
+        
         fig_m_t.update_layout(plot_bgcolor='white', xaxis_title="Tiempo [años]", yaxis_title="Mrd [kNm]",
                             xaxis=dict(range=[0, t_global], showgrid=True, gridcolor='#eee'),
-                            yaxis=dict(range=[0, max(m_res)*1.1], showgrid=True, gridcolor='#eee'))
+                            yaxis=dict(range=[0, max(m_res)*1.1], showgrid=True, gridcolor='#eee'),
+                            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig_m_t, use_container_width=True)
 
     with g2:
-        st.write("### Capacidad Resistente $M_{Rd}$ vs Profundidad $p_x$")
+        st.write("### Momento Resistente $M_{Rd}$ vs Profundidad $p_x$")
         fig_m_px = go.Figure()
-        fig_m_px.add_trace(go.Scatter(x=px_v, y=m_res, name="Mrd vs px", line=dict(color='#8E6713', width=3)))
+        fig_m_px.add_trace(go.Scatter(x=px_v, y=m_res, name="MC App 1", line=dict(color='#e17000', width=3)))
+        fig_m_px.add_trace(go.Scatter(x=px_v, y=m_vect, name="Contevect", line=dict(color='#005293', width=2)))
+        
         fig_m_px.add_vline(x=px_limit, line_dash="dash", line_color="red", annotation_text=f"Límite {px_limit}mm")
+        
         fig_m_px.update_layout(plot_bgcolor='white', xaxis_title="px [mm]", yaxis_title="Mrd [kNm]",
                              xaxis=dict(range=[0, max(max(px_v), px_limit)*1.1 if len(px_v)>0 else 1], showgrid=True, gridcolor='#eee'), 
-                             yaxis=dict(range=[0, max(m_res)*1.1], showgrid=True, gridcolor='#eee'))
+                             yaxis=dict(range=[0, max(m_res)*1.1], showgrid=True, gridcolor='#eee'),
+                             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig_m_px, use_container_width=True)
 
     if t_els:
-        st.success(f"**Vida Útil ELS (p_x = {px_limit} mm):** Alcanzada a los {t_els:.2f} años.")
+        st.success(f"**Estado Límite de Servicio:** Límite normativo alcanzado a los {t_els:.2f} años.")
