@@ -5,7 +5,8 @@ import plotly.graph_objects as go
 from calculos import tiempoiniciacion as calc_ini
 from calculos import Modelcode as calc_mc
 from calculos import Contevect as calc_cv
-from calculos import Cortante as calc_cor  # <--- Tu nueva función
+from calculos import Cortante as calc_cor  
+from calculos import pretensado as calc_pre
 
 # --- CONFIGURACIÓN Y ESTILO ---
 st.set_page_config(page_title="Concrete Durability & Structural Capacity Tool", layout="wide")
@@ -179,13 +180,14 @@ with tab_mc:
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE)
 # ==========================================
+
 with tab_pret:
     t_ini = st.session_state['t_ini_res']
     atk_type = st.session_state['tipo_ataque']
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
 
     st.subheader("Configuración de Pretensado y Cortante")
-    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años**")
+    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años** (Sin degradación de sección ni de fuerza)")
 
     col_p1, col_p2, col_p3 = st.columns(3)
     
@@ -207,38 +209,101 @@ with tab_pret:
         es_val = st.number_input("Es (Acero) [MPa]", value=200000)
         icorr_p = st.number_input("Intensidad $i_{corr}$ (pret)", value=2.0)
 
-    # Diccionario de parámetros para la función Cortante.py
-    params_cortante = {
+    # Diccionario de parámetros unificado
+    # Nota: h_val, b_val, fck_val, rec_inf, phi_inf_0 y n_inf se toman de la pestaña 2 automáticamente
+    params_pret = {
         't_global': t_global,
         't_ini': t_ini,
-        'h': h_val, 'bw': b_val, 'rec_inf': rec_inf,
-        'phi_inf_0': phi_inf_0, 'n_inf': n_inf,
-        'Ae': ae_val, 'dg': dg_val, 'fck': fck_val, 'Es': es_val,
-        'fpy': fpy, 'phi_p0': phi_p0, 'n_p': n_p,
-        'Med': med_val, 'Ved': ved_val,
-        'icorr': icorr_p, 'alpha': alpha_v
+        'h': h_val, 
+        'bw': b_val, 
+        'rec_inf': rec_inf,
+        'phi_inf_0': phi_inf_0, 
+        'n_inf': n_inf,
+        'Ae': ae_val, 
+        'dg': dg_val, 
+        'fck': fck_val, 
+        'Es': es_val,
+        'fpy': fpy, 
+        'phi_p0': phi_p0, 
+        'n_p': n_p,
+        'Med': med_val, 
+        'Ved': ved_val,
+        'icorr': icorr_p, 
+        'alpha': alpha_v
     }
 
-    # Llamada al cálculo de cortante
-    res_cortante = calc_cor.calcular_degradacion_cortante(params_cortante)
+    # --- LLAMADA A LOS MOTORES DE CÁLCULO ---
+    
+    # 1. Cálculo de Cortante (Vrd,c)
+    res_cortante = calc_cor.calcular_degradacion_cortante(params_pret)
     df_v = pd.DataFrame(res_cortante)
+
+    # 2. Cálculo de Tensiones (Incluye P0 y Pérdidas del 25%)
+    res_tensiones = calc_pre.calcular_tensiones_pretensado(params_pret)
+    df_t = pd.DataFrame(res_tensiones)
 
     st.divider()
     
-    # Gráfica de Cortante
-    fig_v = go.Figure()
-    fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['vrdc'], 
-                               name="Vrd,c (Capacidad)", line=dict(color='red', width=3)))
-    fig_v.add_vline(x=t_ini, line_dash="dash", line_color="green", annotation_text="Fin Iniciación")
+    # --- VISUALIZACIÓN ---
+    col_g1, col_g2 = st.columns(2)
 
-    fig_v.update_layout(
-        plot_bgcolor='white',
-        xaxis_title="Tiempo [años]",
-        yaxis_title="Resistencia Cortante [kN]",
-        legend=dict(x=0.01, y=0.99),
-        xaxis=dict(range=[0, t_global])
-    )
-    
-    st.plotly_chart(fig_v, use_container_width=True)
+    with col_g1:
+        st.markdown("### Resistencia a Cortante")
+        fig_v = go.Figure()
+        
+        # Línea de Cortante
+        fig_v.add_trace(go.Scatter(
+            x=df_v['t'], y=df_v['vrdc'], 
+            name="Vrd,c (Capacidad)", line=dict(color='red', width=3)
+        ))
+        
+        # Marcador de iniciación
+        fig_v.add_vline(x=t_ini, line_dash="dash", line_color="green", annotation_text="Iniciación")
 
-    
+        fig_v.update_layout(
+            plot_bgcolor='white',
+            xaxis_title="Tiempo [años]",
+            yaxis_title="Vrd,c [kN]",
+            xaxis=dict(range=[0, t_global], gridcolor='#f0f0f0'),
+            yaxis=dict(bottom=0, gridcolor='#f0f0f0'),
+            legend=dict(x=0.01, y=0.99)
+        )
+        st.plotly_chart(fig_v, use_container_width=True)
+
+    with col_g2:
+        st.markdown("### Estado tensional en el hormigón")
+        fig_t = go.Figure()
+        
+        # Tensión Fibra Inferior (Tracción/Compresión)
+        fig_t.add_trace(go.Scatter(
+            x=df_t['t'], y=df_t['sigma_inferior'], 
+            name="σ Inferior", line=dict(color='#005293', width=3)
+        ))
+        
+        # Tensión Fibra Superior
+        fig_t.add_trace(go.Scatter(
+            x=df_t['t'], y=df_t['sigma_superior'], 
+            name="σ Superior", line=dict(color='#A60628', width=3)
+        ))
+        
+        # Marcador de iniciación
+        fig_t.add_vline(x=t_ini, line_dash="dash", line_color="green", annotation_text="Iniciación")
+
+        fig_t.update_layout(
+            plot_bgcolor='white',
+            xaxis_title="Tiempo [años]",
+            yaxis_title="Tensión [MPa]",
+            xaxis=dict(range=[0, t_global], gridcolor='#f0f0f0'),
+            yaxis=dict(gridcolor='#f0f0f0'),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig_t, use_container_width=True)
+
+    # --- MATRIZ DE DATOS ---
+    with st.expander("Ver Matriz de Resultados (Pretensado)"):
+        # Combinamos datos relevantes para el usuario
+        df_merged = pd.merge(df_v[['t', 'vrdc', 'px']], df_t[['t', 'sigma_inferior', 'sigma_superior']], on='t')
+        st.dataframe(df_merged.style.format({
+            "t": "{:.0f}", "px": "{:.3f}", "vrdc": "{:.2f}", 
+            "sigma_inferior": "{:.3f}", "sigma_superior": "{:.3f}"
+        }))
