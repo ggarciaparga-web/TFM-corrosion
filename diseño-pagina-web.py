@@ -241,6 +241,4 @@ with tab_pret:
     
     st.plotly_chart(fig_v, use_container_width=True)
 
-    # Tabla de datos opcional
-    with st.expander("Ver matriz de resultados (Cortante)"):
-        st.dataframe(df_v)
+    
