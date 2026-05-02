@@ -141,7 +141,7 @@ with tab_mc:
     fig_comp.add_trace(go.Scatter(
         x=t_v, y=m_res_plot, 
         name="Model Code (Sección Constante)", 
-        line=dict(color='#e17000', width=2, dash='dot')
+        line=dict(color='#e17000', width=2, dash='solid')
     ))
 
     # Eventos Críticos (Diamantes rojos)
@@ -157,7 +157,7 @@ with tab_mc:
 
     # Línea de Iniciación (Referencia Vertical)
     fig_comp.add_vline(
-        x=t_ini, line_width=2, line_dash="solid", line_color="green", 
+        x=t_ini, line_width=2, line_dash="dot", line_color="green", 
         annotation_text="FIN INICIACIÓN", annotation_position="top left"
     )
 
@@ -174,13 +174,7 @@ with tab_mc:
 
     st.plotly_chart(fig_comp, use_container_width=True)
 
-    # --- TABLA INFORMATIVA ---
-    with st.expander("Ver detalle de la sección degradada (Puntos Críticos)"):
-        st.write("Datos de geometría en los momentos de fisuración y pérdida de recubrimiento:")
-        # Aseguramos que la tabla no muestre valores basura de t < t_ini si los hubiera
-        st.dataframe(df_puntos_vis[["Tiempo", "Px", "b", "d", "Mu"]].style.format({
-            "Tiempo": "{:.1f}", "Px": "{:.3f}", "b": "{:.1f}", "d": "{:.1f}", "Mu": "{:.2f}"
-        }))
+    
 
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE)
