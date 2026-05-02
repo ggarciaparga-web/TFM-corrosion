@@ -158,7 +158,7 @@ with tab_pret:
     fig_v = go.Figure()
     fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['vrdc'], 
                                name="Vrd,c (Capacidad)", line=dict(color='red', width=3)))
-    
+    fig_v.add_vline(x=t_ini, line_dash="dash", line_color="green", annotation_text="Fin Iniciación")
 
     fig_v.update_layout(
         plot_bgcolor='white',
