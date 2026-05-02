@@ -76,14 +76,17 @@ with tab_ini:
 # ==========================================
 # PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
+
 with tab_mc:
+    # 1. Recuperación de variables de sesión y parámetros de ataque
     t_ini = st.session_state['t_ini_res']
     atk_type = st.session_state['tipo_ataque']
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
 
     st.subheader("Geometría y Parámetros de Flexión")
-    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años** (Periodo sin degradación)")
+    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años** (Periodo de resistencia máxima constante)")
 
+    # 2. Columnas de Inputs
     c1, c2, c3 = st.columns(3)
     with c1: 
         h_val = st.number_input("Canto h [mm]", value=300, key="h_mc")
@@ -99,67 +102,85 @@ with tab_mc:
         phi_inf_0 = st.number_input("Φ barras inf. [mm]", value=16)
 
     # --- EJECUCIÓN DE CÁLCULOS ---
-    # 1. Model Code
+    
+    # A. Model Code (Approach 1)
     t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(
         t_global, b_val, h_val, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
     )
     
-    # 2. Contevect (con la nueva lógica de t_ini interna)
+    # B. Contevect (Degradación geométrica con puntos críticos)
     t_cv, df_crit, m_vect = calc_cv.calcular_contevect(
         t_global, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
     )
 
+    # --- CORRECCIÓN ESTRATÉGICA DE LA GRÁFICA ---
+    # Obtenemos el valor de capacidad máxima al inicio (t=0 o t=t_ini)
+    m_max_ref = m_vect[0] 
+
+    # Forzamos que Contevect sea constante hasta t_ini
+    m_vect_plot = np.where(t_cv < t_ini, m_max_ref, m_vect)
+    
+    # Forzamos que Model Code sea constante hasta t_ini
+    m_res_plot = np.where(t_v < t_ini, m_max_ref, m_res)
+
     st.divider()
+    
+    # --- VISUALIZACIÓN CON PLOTLY ---
     st.write("### Comparativa: Momento Resistente vs Tiempo")
     
     fig_comp = go.Figure()
 
-    # --- LOGICA DE GRAFICACIÓN CORREGIDA ---
-    
-    # Curva Contevect (El vector m_vect ya trae el tramo constante de 0 a t_ini)
+    # Curva Contevect (Línea Azul Gruesa)
     fig_comp.add_trace(go.Scatter(
-        x=t_cv, y=m_vect, 
+        x=t_cv, y=m_vect_plot, 
         name="Contevect (Degradación Geométrica)", 
         line=dict(color='#005293', width=3)
     ))
 
-    # Curva Model Code (Ajustada para ser constante hasta t_ini si no lo fuera)
-    # Se concatena tramo constante inicial con el cálculo degradado
-    m_inicial = m_res[0]
-    t_pre = np.linspace(0, t_ini, 20)
-    m_pre = [m_inicial] * len(t_pre)
-    
+    # Curva Model Code (Línea Naranja Punteada para diferenciar)
     fig_comp.add_trace(go.Scatter(
-        x=np.concatenate([t_pre, t_v[t_v > t_ini]]), 
-        y=np.concatenate([m_pre, m_res[t_v > t_ini]]), 
+        x=t_v, y=m_res_plot, 
         name="Model Code (Sección Constante)", 
         line=dict(color='#e17000', width=2, dash='dot')
     ))
 
-    # Eventos Críticos (El primer diamante rojo aparecerá en t_ini)
+    # Eventos Críticos (Diamantes rojos)
+    # Filtramos para que solo muestre puntos a partir de t_ini
+    df_puntos_vis = df_crit[df_crit["Tiempo"] >= t_ini - 0.1]
+    
     fig_comp.add_trace(go.Scatter(
-        x=df_crit["Tiempo"], y=df_crit["Mu"], 
+        x=df_puntos_vis["Tiempo"], y=df_puntos_vis["Mu"], 
         mode='markers',
-        marker=dict(color='red', size=10, symbol='diamond', line=dict(width=1, color='black')),
-        name="Eventos Críticos"
+        marker=dict(color='red', size=11, symbol='diamond', line=dict(width=1, color='black')),
+        name="Eventos Críticos (Puntos de quiebre)"
     ))
 
-    # Línea Vertical de Iniciación (Punto de inflexión)
+    # Línea de Iniciación (Referencia Vertical)
     fig_comp.add_vline(
         x=t_ini, line_width=2, line_dash="solid", line_color="green", 
-        annotation_text="Fin Iniciación"
+        annotation_text="FIN INICIACIÓN", annotation_position="top left"
     )
 
+    # Ajustes finales del Layout
     fig_comp.update_layout(
         plot_bgcolor='white',
         xaxis_title="Tiempo [años]",
         yaxis_title="Mrd [kNm]",
-        xaxis=dict(range=[0, t_global]),
-        yaxis=dict(range=[0, m_inicial * 1.1]),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        xaxis=dict(range=[0, t_global], gridcolor='#f5f5f5'),
+        yaxis=dict(range=[0, m_max_ref * 1.15], gridcolor='#f5f5f5'),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        hovermode="x unified"
     )
 
     st.plotly_chart(fig_comp, use_container_width=True)
+
+    # --- TABLA INFORMATIVA ---
+    with st.expander("Ver detalle de la sección degradada (Puntos Críticos)"):
+        st.write("Datos de geometría en los momentos de fisuración y pérdida de recubrimiento:")
+        # Aseguramos que la tabla no muestre valores basura de t < t_ini si los hubiera
+        st.dataframe(df_puntos_vis[["Tiempo", "Px", "b", "d", "Mu"]].style.format({
+            "Tiempo": "{:.1f}", "Px": "{:.3f}", "b": "{:.1f}", "d": "{:.1f}", "Mu": "{:.2f}"
+        }))
 
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE)
