@@ -159,17 +159,11 @@ with tab_pret:
     fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['vrdc'], 
                                name="Vrd,c (Capacidad)", line=dict(color='red', width=3)))
     
-    # Eje secundario para el Pretensado
-    fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['ned'], 
-                               name="Ned (Fuerza Pret.)", line=dict(color='blue', dash='dash'), yaxis="y2"))
-
-    fig_v.add_vline(x=t_ini, line_dash="dash", line_color="green", annotation_text="Fin Iniciación")
 
     fig_v.update_layout(
         plot_bgcolor='white',
         xaxis_title="Tiempo [años]",
         yaxis_title="Resistencia Cortante [kN]",
-        yaxis2=dict(title="Fuerza Pretensado [kN]", overlaying='y', side='right'),
         legend=dict(x=0.01, y=0.99),
         xaxis=dict(range=[0, t_global])
     )
