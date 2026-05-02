@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from calculos import tiempoiniciacion as calc_ini
 from calculos import Modelcode as calc_mc
 from calculos import Contevect as calc_cv
+from calculos import Cortante as calc_cor  # <--- Tu nueva función
 
 # --- CONFIGURACIÓN Y ESTILO ---
 st.set_page_config(page_title="Concrete Durability & Structural Capacity Tool", layout="wide")
@@ -30,7 +31,8 @@ with head_col2:
 if 't_ini_res' not in st.session_state: st.session_state['t_ini_res'] = 0.0
 if 'tipo_ataque' not in st.session_state: st.session_state['tipo_ataque'] = "Carbonatación"
 
-tab_ini, tab_mc = st.tabs(["🕒 Tiempo de Iniciación", "🏗️ Capacidad Estructural (Comparativa)"])
+# Creamos las 3 pestañas (Añadida la de Pretensado/Cortante)
+tab_ini, tab_mc, tab_pret = st.tabs([" Tiempo de Iniciación", " Capacidad Estructural", " Pretensado"])
 
 # ==========================================
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
@@ -64,73 +66,116 @@ with tab_ini:
     with res1:
         if t_ini_calc: st.metric("Tiempo de Iniciación", f"{t_ini_calc:.2f} años")
         else: st.error(f"Sin iniciación en {t_global} años.")
-        st.dataframe(pd.DataFrame({"Año": t_i, y_label: y_vals}).head(50))
     with res2:
         fig_ini = go.Figure()
         fig_ini.add_trace(go.Scatter(x=t_i, y=y_vals, fill='tozeroy', line=dict(color='#e17000', width=3), name="Avance"))
         fig_ini.add_trace(go.Scatter(x=t_i, y=[limit_val]*len(t_i), line=dict(color='black', dash='dash'), name="Límite"))
-        fig_ini.update_layout(plot_bgcolor='white', xaxis_title="Tiempo [años]", yaxis_title=y_label, xaxis=dict(range=[0, t_global]))
+        fig_ini.update_layout(plot_bgcolor='white', xaxis_title="Tiempo [años]", yaxis_title=y_label)
         st.plotly_chart(fig_ini, use_container_width=True)
 
 # ==========================================
-# PESTAÑA 2: CAPACIDAD ESTRUCTURAL
+# PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
 with tab_mc:
     t_ini = st.session_state['t_ini_res']
     atk_type = st.session_state['tipo_ataque']
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
-    px_limit = 0.05 if atk_type == "Carbonatación" else 0.5 
 
-    st.subheader("Geometría y Parámetros Estructurales")
-    st.info(f"Fase de Iniciación: **{t_ini:.2f} años** (Periodo sin pérdida de capacidad)")
-
+    st.subheader("Geometría y Parámetros de Flexión")
     c1, c2, c3 = st.columns(3)
-    with c1: h = st.number_input("Canto h [mm]", value=300); b = st.number_input("Ancho b [mm]", value=150); icorr = st.number_input("Intensidad $i_{corr}$", value=0.5)
-    with c2: rec_sup = st.number_input("Recubrimiento Sup. [mm]", value=20); rec_inf = st.number_input("Recubrimiento Inf. [mm]", value=20); fyk = st.number_input("fyk [MPa]", value=500)
-    with c3: fck = st.number_input("fck [MPa]", value=25); n_inf = st.number_input("Nº barras inf.", value=2); phi_inf_0 = st.number_input("Φ barras inf. [mm]", value=16)
+    with c1: 
+        h_val = st.number_input("Canto h [mm]", value=300, key="h_mc")
+        b_val = st.number_input("Ancho b [mm]", value=150, key="b_mc")
+        icorr_val = st.number_input("Intensidad $i_{corr}$", value=0.5, key="icorr_mc")
+    with c2: 
+        rec_sup = st.number_input("Recubrimiento Sup. [mm]", value=20)
+        rec_inf = st.number_input("Recubrimiento Inf. [mm]", value=20)
+        fyk = st.number_input("fyk [MPa]", value=500)
+    with c3: 
+        fck_val = st.number_input("fck [MPa]", value=25, key="fck_mc")
+        n_inf = st.number_input("Nº barras inf.", value=2)
+        phi_inf_0 = st.number_input("Φ barras inf. [mm]", value=16)
 
-    # --- CÁLCULOS ---
-    t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(t_global, b, h, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck, icorr, alpha_v, t_ini)
-    t_cv, df_crit, m_vect = calc_cv.calcular_contevect(t_global, b, h, rec_sup, rec_inf, n_inf, phi_inf_0, fyk, fck, icorr, alpha_v, t_ini)
+    # Cálculos Flexión (tus funciones existentes)
+    t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(t_global, b_val, h_val, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini)
+    
+    fig_flex = go.Figure()
+    fig_flex.add_trace(go.Scatter(x=t_v, y=m_res, name="Mrd (Flexión)", line=dict(color='#e17000', width=3)))
+    fig_flex.add_vline(x=t_ini, line_dash="dash", line_color="green", annotation_text="Iniciación")
+    fig_flex.update_layout(plot_bgcolor='white', xaxis_title="Tiempo [años]", yaxis_title="Mrd [kNm]")
+    st.plotly_chart(fig_flex, use_container_width=True)
+
+# ==========================================
+# PESTAÑA 3: PRETENSADO (CORTANTE)
+# ==========================================
+with tab_pret:
+    t_ini = st.session_state['t_ini_res']
+    atk_type = st.session_state['tipo_ataque']
+    alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
+
+    st.subheader("Configuración de Pretensado y Cortante")
+    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años**")
+
+    col_p1, col_p2, col_p3 = st.columns(3)
+    
+    with col_p1:
+        st.markdown("**Armadura Activa**")
+        phi_p0 = st.number_input("Φ cordones [mm]", value=14.0)
+        n_p = st.number_input("Nº cordones", value=2)
+        fpy = st.number_input("fpy [MPa]", value=1860)
+        ae_val = st.number_input("Excentricidad Ae [mm]", value=92.0)
+    
+    with col_p2:
+        st.markdown("**Solicitaciones**")
+        med_val = st.number_input("Med actuante [kN·m]", value=0.0) * 1e6
+        ved_val = st.number_input("Ved actuante [kN]", value=30.0) * 1e3
+        dg_val = st.number_input("Tamaño árido $d_g$ [mm]", value=28.0)
+    
+    with col_p3:
+        st.markdown("**Materiales**")
+        es_val = st.number_input("Es (Acero) [MPa]", value=200000)
+        icorr_p = st.number_input("Intensidad $i_{corr}$ (pret)", value=2.0)
+
+    # Diccionario de parámetros para la función Cortante.py
+    params_cortante = {
+        't_global': t_global,
+        't_ini': t_ini,
+        'h': h_val, 'bw': b_val, 'rec_inf': rec_inf,
+        'phi_inf_0': phi_inf_0, 'n_inf': n_inf,
+        'Ae': ae_val, 'dg': dg_val, 'fck': fck_val, 'Es': es_val,
+        'fpy': fpy, 'phi_p0': phi_p0, 'n_p': n_p,
+        'Med': med_val, 'Ved': ved_val,
+        'icorr': icorr_p, 'alpha': alpha_v
+    }
+
+    # Llamada al cálculo de cortante
+    res_cortante = calc_cor.calcular_degradacion_cortante(params_cortante)
+    df_v = pd.DataFrame(res_cortante)
 
     st.divider()
-    g1, g2 = st.columns(2)
+    
+    # Gráfica de Cortante
+    fig_v = go.Figure()
+    fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['vrdc'], 
+                               name="Vrd,c (Capacidad)", line=dict(color='red', width=3)))
+    
+    # Eje secundario para el Pretensado
+    fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['ned'], 
+                               name="Ned (Fuerza Pret.)", line=dict(color='blue', dash='dash'), yaxis="y2"))
 
-    with g1:
-        st.write("### Momento Resistente vs Tiempo")
-        fig1 = go.Figure()
-        
-        # Líneas horizontales de capacidad inicial (0 a t_ini)
-        m_inicial = m_res[0] 
-        t_pre = np.linspace(0, t_ini, 20)
-        m_pre = [m_inicial] * len(t_pre)
+    fig_v.add_vline(x=t_ini, line_dash="dash", line_color="green", annotation_text="Fin Iniciación")
 
-        # MC Approach 1
-        fig1.add_trace(go.Scatter(x=np.concatenate([t_pre, t_v[t_v > t_ini]]), 
-                                 y=np.concatenate([m_pre, m_res[t_v > t_ini]]), 
-                                 name="MC Approach 1", line=dict(color='#e17000', width=2)))
-        
-        # Contevect (Añadimos tramo horizontal inicial)
-        fig1.add_trace(go.Scatter(x=np.concatenate([t_pre, t_cv[t_cv > t_ini]]), 
-                                 y=np.concatenate([m_pre, m_vect[t_cv > t_ini]]), 
-                                 name="Contevect (Interp)", line=dict(color='#005293', width=3)))
-        
-        # Puntos Clave
-        fig1.add_trace(go.Scatter(x=df_crit["Tiempo"], y=df_crit["Mu"], mode='markers',
-                                 marker=dict(color='red', size=12, symbol='diamond'), name="Puntos Clave"))
+    fig_v.update_layout(
+        plot_bgcolor='white',
+        xaxis_title="Tiempo [años]",
+        yaxis_title="Resistencia Cortante [kN]",
+        yaxis2=dict(title="Fuerza Pretensado [kN]", overlaying='y', side='right'),
+        legend=dict(x=0.01, y=0.99),
+        xaxis=dict(range=[0, t_global])
+    )
+    
+    st.plotly_chart(fig_v, use_container_width=True)
 
-        # Línea de Iniciación
-        fig1.add_vline(x=t_ini, line_width=2, line_dash="solid", line_color="green", annotation_text="Iniciación")
-
-        fig1.update_layout(plot_bgcolor='white', xaxis_title="Tiempo [años]", yaxis_title="Mrd [kNm]",
-                          xaxis=dict(range=[0, t_global]), yaxis=dict(range=[0, m_inicial*1.1]))
-        st.plotly_chart(fig1, use_container_width=True)
-
-    with g2:
-        st.write("### Profundidad de Corrosión $P_x$ vs Tiempo")
-        fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=t_v, y=px_v, fill='tozeroy', name="px [mm]", line=dict(color='#8E6713', width=3)))
-        fig2.add_vline(x=t_ini, line_width=2, line_dash="solid", line_color="green", annotation_text="Iniciación")
-        fig2.update_layout(plot_bgcolor='white', xaxis_title="Tiempo [años]", yaxis_title="px [mm]",
-                          xaxis=dict(range=[0, t_global]), yaxis=dict(range=[0, max(px_v)*1.2 if len(px_v)>0 else 1]))
-        st.plotly_chart(fig2, use_container_width=True)
+    # Tabla de datos opcional
+    with st.expander("Ver matriz de resultados (Cortante)"):
+        st.dataframe(df_v)
