@@ -76,14 +76,13 @@ with tab_ini:
 # ==========================================
 # PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
-
 with tab_mc:
     t_ini = st.session_state['t_ini_res']
     atk_type = st.session_state['tipo_ataque']
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
 
     st.subheader("Geometría y Parámetros de Flexión")
-    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años** (Sin pérdida de capacidad)")
+    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años** (Periodo sin degradación)")
 
     c1, c2, c3 = st.columns(3)
     with c1: 
@@ -100,69 +99,67 @@ with tab_mc:
         phi_inf_0 = st.number_input("Φ barras inf. [mm]", value=16)
 
     # --- EJECUCIÓN DE CÁLCULOS ---
-    
-    # 1. Método Model Code (Approach 1)
+    # 1. Model Code
     t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(
         t_global, b_val, h_val, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
     )
     
-    # 2. Método Contevect (Puntos Críticos e Interpolación)
+    # 2. Contevect (con la nueva lógica de t_ini interna)
     t_cv, df_crit, m_vect = calc_cv.calcular_contevect(
         t_global, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
     )
 
     st.divider()
-    
-    # --- GRÁFICA COMPARATIVA ---
     st.write("### Comparativa: Momento Resistente vs Tiempo")
     
     fig_comp = go.Figure()
 
-    # Curva 1: Model Code (Generalmente más suave)
-    fig_comp.add_trace(go.Scatter(
-        x=t_v, y=m_res, 
-        name="Model Code (Sección Constante)", 
-        line=dict(color='#e17000', width=2)
-    ))
-
-    # Curva 2: Contevect (Incluye cambios de sección b y d)
+    # --- LOGICA DE GRAFICACIÓN CORREGIDA ---
+    
+    # Curva Contevect (El vector m_vect ya trae el tramo constante de 0 a t_ini)
     fig_comp.add_trace(go.Scatter(
         x=t_cv, y=m_vect, 
         name="Contevect (Degradación Geométrica)", 
         line=dict(color='#005293', width=3)
     ))
 
-    # Puntos Clave de Contevect (Eventos de fisuración y pérdida de recubrimiento)
+    # Curva Model Code (Ajustada para ser constante hasta t_ini si no lo fuera)
+    # Se concatena tramo constante inicial con el cálculo degradado
+    m_inicial = m_res[0]
+    t_pre = np.linspace(0, t_ini, 20)
+    m_pre = [m_inicial] * len(t_pre)
+    
+    fig_comp.add_trace(go.Scatter(
+        x=np.concatenate([t_pre, t_v[t_v > t_ini]]), 
+        y=np.concatenate([m_pre, m_res[t_v > t_ini]]), 
+        name="Model Code (Sección Constante)", 
+        line=dict(color='#e17000', width=2, dash='dot')
+    ))
+
+    # Eventos Críticos (El primer diamante rojo aparecerá en t_ini)
     fig_comp.add_trace(go.Scatter(
         x=df_crit["Tiempo"], y=df_crit["Mu"], 
         mode='markers',
         marker=dict(color='red', size=10, symbol='diamond', line=dict(width=1, color='black')),
-        name="Eventos Críticos (Contevect)"
+        name="Eventos Críticos"
     ))
 
-    # Línea Vertical de Iniciación
+    # Línea Vertical de Iniciación (Punto de inflexión)
     fig_comp.add_vline(
         x=t_ini, line_width=2, line_dash="solid", line_color="green", 
-        annotation_text="Fin Iniciación", annotation_position="top left"
+        annotation_text="Fin Iniciación"
     )
 
-    # Configuración de Layout
     fig_comp.update_layout(
         plot_bgcolor='white',
         xaxis_title="Tiempo [años]",
         yaxis_title="Mrd [kNm]",
-        xaxis=dict(range=[0, t_global], gridcolor='#f0f0f0'),
-        yaxis=dict(range=[0, max(max(m_res), max(m_vect))*1.1], gridcolor='#f0f0f0'),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        hovermode="x unified"
+        xaxis=dict(range=[0, t_global]),
+        yaxis=dict(range=[0, m_inicial * 1.1]),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
 
     st.plotly_chart(fig_comp, use_container_width=True)
-
-    # --- TABLA DE EVENTOS ---
-    with st.expander("Ver detalle de Eventos Críticos (Método Contevect)"):
-        st.write("Estos puntos representan cambios en el ancho (b) o canto útil (d) de la sección:")
-        st.dataframe(df_crit[["Tiempo", "Px", "b", "d", "Mu"]].style.format("{:.2f}"))
 
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE)
