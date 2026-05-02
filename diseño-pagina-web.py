@@ -180,37 +180,38 @@ with tab_mc:
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE)
 # ==========================================
-
+# ==========================================
+# PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
+# ==========================================
 with tab_pret:
     t_ini = st.session_state['t_ini_res']
     atk_type = st.session_state['tipo_ataque']
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
 
     st.subheader("Configuración de Pretensado y Cortante")
-    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años** (Sin degradación de sección ni de fuerza)")
+    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años**")
 
     col_p1, col_p2, col_p3 = st.columns(3)
     
     with col_p1:
         st.markdown("**Armadura Activa**")
-        phi_p0 = st.number_input("Φ cordones [mm]", value=14.0)
-        n_p = st.number_input("Nº cordones", value=2)
-        fpy = st.number_input("fpy [MPa]", value=1860)
-        ae_val = st.number_input("Excentricidad Ae [mm]", value=92.0)
+        phi_p0 = st.number_input("Φ cordones [mm]", value=14.0, key="phi_p0_p3")
+        n_p = st.number_input("Nº cordones", value=2, key="n_p_p3")
+        fpy = st.number_input("fpy [MPa]", value=1860, key="fpy_p3")
+        ae_val = st.number_input("Excentricidad Ae [mm]", value=92.0, key="ae_p3")
     
     with col_p2:
         st.markdown("**Solicitaciones**")
-        med_val = st.number_input("Med actuante [kN·m]", value=0.0) * 1e6
-        ved_val = st.number_input("Ved actuante [kN]", value=30.0) * 1e3
-        dg_val = st.number_input("Tamaño árido $d_g$ [mm]", value=28.0)
+        med_val = st.number_input("Med [kN·m]", value=0.0, key="med_p3") * 1e6
+        ved_val = st.number_input("Ved [kN]", value=30.0, key="ved_p3") * 1e3
+        dg_val = st.number_input("Tamaño árido $d_g$ [mm]", value=28.0, key="dg_p3")
     
     with col_p3:
         st.markdown("**Materiales**")
-        es_val = st.number_input("Es (Acero) [MPa]", value=200000)
-        icorr_p = st.number_input("Intensidad $i_{corr}$ (pret)", value=2.0)
+        es_val = st.number_input("Es (Acero) [MPa]", value=200000, key="es_p3")
+        icorr_p = st.number_input("Intensidad $i_{corr}$ (pret)", value=2.0, key="icorr_p3")
 
-    # Diccionario de parámetros unificado
-    # Nota: h_val, b_val, fck_val, rec_inf, phi_inf_0 y n_inf se toman de la pestaña 2 automáticamente
+    # Diccionario de parámetros (Asegúrate de que h_val, b_val, etc. vienen de la Tab 2)
     params_pret = {
         't_global': t_global,
         't_ini': t_ini,
@@ -232,78 +233,47 @@ with tab_pret:
         'alpha': alpha_v
     }
 
-    # --- LLAMADA A LOS MOTORES DE CÁLCULO ---
-    
-    # 1. Cálculo de Cortante (Vrd,c)
+    # --- CÁLCULOS ---
     res_cortante = calc_cor.calcular_degradacion_cortante(params_pret)
     df_v = pd.DataFrame(res_cortante)
 
-    # 2. Cálculo de Tensiones (Incluye P0 y Pérdidas del 25%)
     res_tensiones = calc_pre.calcular_tensiones_pretensado(params_pret)
     df_t = pd.DataFrame(res_tensiones)
 
     st.divider()
     
-    # --- VISUALIZACIÓN ---
     col_g1, col_g2 = st.columns(2)
 
     with col_g1:
         st.markdown("### Resistencia a Cortante")
         fig_v = go.Figure()
+        fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['vrdc'], name="Vrd,c", line=dict(color='red', width=3)))
+        fig_v.add_vline(x=t_ini, line_dash="dash", line_color="green")
         
-        # Línea de Cortante
-        fig_v.add_trace(go.Scatter(
-            x=df_v['t'], y=df_v['vrdc'], 
-            name="Vrd,c (Capacidad)", line=dict(color='red', width=3)
-        ))
-        
-        # Marcador de iniciación
-        fig_v.add_vline(x=t_ini, line_dash="dash", line_color="green", annotation_text="Iniciación")
-
+        # ELIMINADO 'bottom=0' que causaba el error y reemplazado por rangemode
         fig_v.update_layout(
             plot_bgcolor='white',
             xaxis_title="Tiempo [años]",
             yaxis_title="Vrd,c [kN]",
-            xaxis=dict(range=[0, t_global], gridcolor='#f0f0f0'),
-            yaxis=dict(bottom=0, gridcolor='#f0f0f0'),
+            xaxis=dict(range=[0, t_global], gridcolor='#eeeeee'),
+            yaxis=dict(rangemode='tozero', gridcolor='#eeeeee'),
             legend=dict(x=0.01, y=0.99)
         )
         st.plotly_chart(fig_v, use_container_width=True)
 
     with col_g2:
-        st.markdown("### Estado tensional en el hormigón")
+        st.markdown("### Tensiones en el Hormigón")
         fig_t = go.Figure()
+        fig_t.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_inferior'], name="σ Inf", line=dict(color='#005293', width=3)))
+        fig_t.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_superior'], name="σ Sup", line=dict(color='#A60628', width=3)))
+        fig_t.add_vline(x=t_ini, line_dash="dash", line_color="green")
         
-        # Tensión Fibra Inferior (Tracción/Compresión)
-        fig_t.add_trace(go.Scatter(
-            x=df_t['t'], y=df_t['sigma_inferior'], 
-            name="σ Inferior", line=dict(color='#005293', width=3)
-        ))
-        
-        # Tensión Fibra Superior
-        fig_t.add_trace(go.Scatter(
-            x=df_t['t'], y=df_t['sigma_superior'], 
-            name="σ Superior", line=dict(color='#A60628', width=3)
-        ))
-        
-        # Marcador de iniciación
-        fig_t.add_vline(x=t_ini, line_dash="dash", line_color="green", annotation_text="Iniciación")
-
         fig_t.update_layout(
             plot_bgcolor='white',
             xaxis_title="Tiempo [años]",
             yaxis_title="Tensión [MPa]",
-            xaxis=dict(range=[0, t_global], gridcolor='#f0f0f0'),
-            yaxis=dict(gridcolor='#f0f0f0'),
+            xaxis=dict(range=[0, t_global], gridcolor='#eeeeee'),
+            yaxis=dict(gridcolor='#eeeeee'),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         st.plotly_chart(fig_t, use_container_width=True)
-
-    # --- MATRIZ DE DATOS ---
-    with st.expander("Ver Matriz de Resultados (Pretensado)"):
-        # Combinamos datos relevantes para el usuario
-        df_merged = pd.merge(df_v[['t', 'vrdc', 'px']], df_t[['t', 'sigma_inferior', 'sigma_superior']], on='t')
-        st.dataframe(df_merged.style.format({
-            "t": "{:.0f}", "px": "{:.3f}", "vrdc": "{:.2f}", 
-            "sigma_inferior": "{:.3f}", "sigma_superior": "{:.3f}"
-        }))
