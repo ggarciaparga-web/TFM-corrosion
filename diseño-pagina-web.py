@@ -77,6 +77,9 @@ with tab_ini:
 # ==========================================
 # PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
+# ==========================================
+# PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
+# ==========================================
 
 with tab_mc:
     # 1. Recuperación de variables de sesión y parámetros de ataque
@@ -85,97 +88,110 @@ with tab_mc:
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
 
     st.subheader("Geometría y Parámetros de Flexión")
-    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años** (Periodo de resistencia máxima constante)")
+    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años**")
 
     # 2. Columnas de Inputs
     c1, c2, c3 = st.columns(3)
     with c1: 
-        h_val = st.number_input("Canto h [mm]", value=300, key="h_mc")
-        b_val = st.number_input("Ancho b [mm]", value=150, key="b_mc")
+        h_val = st.number_input("Canto h [mm]", value=150, key="h_mc") # Ajustado a tus valores de prueba
+        b_val = st.number_input("Ancho b [mm]", value=300, key="b_mc")
         icorr_val = st.number_input("Intensidad $i_{corr}$", value=0.5, key="icorr_mc")
     with c2: 
-        rec_sup = st.number_input("Recubrimiento Sup. [mm]", value=20)
-        rec_inf = st.number_input("Recubrimiento Inf. [mm]", value=20)
+        rec_sup = st.number_input("Recubrimiento Sup. [mm]", value=50)
+        rec_inf = st.number_input("Recubrimiento Inf. [mm]", value=50)
         fyk = st.number_input("fyk [MPa]", value=500)
     with c3: 
         fck_val = st.number_input("fck [MPa]", value=25, key="fck_mc")
         n_inf = st.number_input("Nº barras inf.", value=2)
-        phi_inf_0 = st.number_input("Φ barras inf. [mm]", value=16)
+        phi_inf_0 = st.number_input("Φ barras inf. [mm]", value=15)
+
+    # Variables adicionales para el diagrama M-Chi
+    Ec = 25000
+    fct = 3.1
+    esy = 0.0021
+    ecy = 0.0035
+    Es = 200000
 
     # --- EJECUCIÓN DE CÁLCULOS ---
     
-    # A. Model Code (Approach 1)
-    t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(
-        t_global, b_val, h_val, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
+    # A. Model Code y Diagramas M-Chi Evolutivos
+    # Llamamos a tu nueva función que devuelve el diccionario de matrices
+    dict_mchi = calc_mchi.calcular_capacidad_y_diagramas(
+        t_global, b_val, h_val, rec_sup, rec_inf, 2, 15, n_inf, phi_inf_0, 
+        fyk, fck_val, icorr_val, alpha_v, t_ini, Ec, fct, ecy, esy, Es
     )
     
-    # B. Contevect (Degradación geométrica con puntos críticos)
+    # Extraemos m_res (Mrd) para la gráfica temporal de la columna correspondiente
+    t_v = np.array(list(dict_mchi.keys()))
+    m_res = np.array([dict_mchi[t][5, 0] for t in t_v]) # El Mrd es el Punto 4 (fila 5)
+    
+    # B. Contevect (Mantenemos tu lógica anterior)
     t_cv, df_crit, m_vect = calc_cv.calcular_contevect(
         t_global, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
     )
 
-    # --- CORRECCIÓN ESTRATÉGICA DE LA GRÁFICA ---
-    # Obtenemos el valor de capacidad máxima al inicio (t=0 o t=t_ini)
+    # Correcciones para gráficas temporales
     m_max_ref = m_vect[0] 
-
-    # Forzamos que Contevect sea constante hasta t_ini
     m_vect_plot = np.where(t_cv < t_ini, m_max_ref, m_vect)
-    
-    # Forzamos que Model Code sea constante hasta t_ini
     m_res_plot = np.where(t_v < t_ini, m_max_ref, m_res)
 
     st.divider()
     
-    # --- VISUALIZACIÓN CON PLOTLY ---
+    # --- VISUALIZACIÓN 1: Mrd vs TIEMPO ---
     st.write("### Comparativa: Momento Resistente vs Tiempo")
-    
     fig_comp = go.Figure()
-
-    # Curva Contevect (Línea Azul Gruesa)
-    fig_comp.add_trace(go.Scatter(
-        x=t_cv, y=m_vect_plot, 
-        name="Contevect (Degradación Geométrica)", 
-        line=dict(color='#005293', width=3)
-    ))
-
-    # Curva Model Code (Línea Naranja Punteada para diferenciar)
-    fig_comp.add_trace(go.Scatter(
-        x=t_v, y=m_res_plot, 
-        name="Model Code (Sección Constante)", 
-        line=dict(color='#e17000', width=2, dash='solid')
-    ))
-
-    # Eventos Críticos (Diamantes rojos)
-    # Filtramos para que solo muestre puntos a partir de t_ini
-    df_puntos_vis = df_crit[df_crit["Tiempo"] >= t_ini - 0.1]
+    fig_comp.add_trace(go.Scatter(x=t_cv, y=m_vect_plot, name="Contevect", line=dict(color='#005293', width=3)))
+    fig_comp.add_trace(go.Scatter(x=t_v, y=m_res_plot, name="Model Code", line=dict(color='#e17000', width=2)))
     
-    fig_comp.add_trace(go.Scatter(
-        x=df_puntos_vis["Tiempo"], y=df_puntos_vis["Mu"], 
-        mode='markers',
-        marker=dict(color='red', size=11, symbol='diamond', line=dict(width=1, color='black')),
-        name="Eventos Críticos (Puntos de quiebre)"
-    ))
-
-    # Línea de Iniciación (Referencia Vertical)
-    fig_comp.add_vline(
-        x=t_ini, line_width=2, line_dash="dot", line_color="green", 
-        annotation_text="FIN INICIACIÓN", annotation_position="top left"
-    )
-
-    # Ajustes finales del Layout
-    fig_comp.update_layout(
-        plot_bgcolor='white',
-        xaxis_title="Tiempo [años]",
-        yaxis_title="Mrd [kNm]",
-        xaxis=dict(range=[0, t_global], gridcolor='#f5f5f5'),
-        yaxis=dict(range=[0, m_max_ref * 1.15], gridcolor='#f5f5f5'),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        hovermode="x unified"
-    )
-
+    fig_comp.update_layout(xaxis_title="Tiempo [años]", yaxis_title="Mrd [kNm]", hovermode="x unified", plot_bgcolor='white')
     st.plotly_chart(fig_comp, use_container_width=True)
 
+    st.divider()
+
+    # --- VISUALIZACIÓN 2: DIAGRAMA MOMENTO-CURVATURA ---
+    st.write("### Diagrama Momento-Curvatura (M-χ)")
+    st.write("Selecciona un año para ver el estado de la sección:")
     
+    # Slider para elegir el tiempo a visualizar
+    t_seleccionado = st.select_slider(
+        "Año de análisis", 
+        options=sorted(list(dict_mchi.keys())),
+        value=0.0
+    )
+
+    # Obtenemos la matriz [M, Chi] para ese año
+    matriz_mchi = dict_mchi[t_seleccionado]
+
+    fig_mchi = go.Figure()
+    
+    # Dibujamos el diagrama (Curvatura en X, Momento en Y)
+    fig_mchi.add_trace(go.Scatter(
+        x=matriz_mchi[:, 1], 
+        y=matriz_mchi[:, 0],
+        mode='lines+markers',
+        name=f"Año {t_seleccionado}",
+        line=dict(color='firebrick', width=3),
+        marker=dict(size=8)
+    ))
+
+    # Anotaciones de los puntos clave
+    puntos_nombres = ["Origen", "Fisuración (Bruta)", "Fisuración (Fisurada)", "Fluencia", "Post-Plastificación", "Agotamiento (Mrd)"]
+    for j, nombre in enumerate(puntos_nombres):
+        fig_mchi.add_annotation(
+            x=matriz_mchi[j, 1], y=matriz_mchi[j, 0],
+            text=nombre, showarrow=True, arrowhead=1, ax=40, ay=-20
+        )
+
+    fig_mchi.update_layout(
+        title=f"Estado de la sección al año {t_seleccionado}",
+        xaxis_title="Curvatura χ [1/m]",
+        yaxis_title="Momento M [kNm]",
+        plot_bgcolor='white',
+        xaxis=dict(gridcolor='#f5f5f5'),
+        yaxis=dict(gridcolor='#f5f5f5')
+    )
+
+    st.plotly_chart(fig_mchi, use_container_width=True)
 
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE)
