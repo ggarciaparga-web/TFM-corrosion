@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from calculos import tiempoiniciacion as calc_ini
-from calculos import Modelcode as calc_mc
+from calculos import diagrama_momento_curvatura as calc_mc
 from calculos import Contevect as calc_cv
 from calculos import Cortante as calc_cor  
 from calculos import pretensado as calc_pre
