@@ -116,10 +116,8 @@ with tab_mc:
     
     # A. Model Code y Diagramas M-Chi Evolutivos
     # Llamamos a tu nueva función que devuelve el diccionario de matrices
-    dict_mchi = calc_mchi.calcular_capacidad_y_diagramas(
-        t_global, b_val, h_val, rec_sup, rec_inf, 2, 15, n_inf, phi_inf_0, 
-        fyk, fck_val, icorr_val, alpha_v, t_ini, Ec, fct, ecy, esy, Es
-    )
+    dict_mchi = calc_mchi.calcular_diagramas_desde_matriz(matriz_model_code, b, h, rec_sup, rec_inf, n_sup, n_inf, fyk, fck, Ec, fct, ecy, esy, Es)
+    
     
     # Extraemos m_res (Mrd) para la gráfica temporal de la columna correspondiente
     t_v = np.array(list(dict_mchi.keys()))
