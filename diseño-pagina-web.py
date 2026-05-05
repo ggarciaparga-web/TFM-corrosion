@@ -116,6 +116,11 @@ with tab_mc:
     
     # A. Model Code y Diagramas M-Chi Evolutivos
     # Llamamos a tu nueva función que devuelve el diccionario de matrices
+    matriz_model_code = calc_mc.calcular_capacidad_residual(
+    t_global, b_val, h_val, rec_sup, rec_inf, 
+    2, 16, n_inf, phi_inf_0, 
+    fyk, fck_val, icorr_val, alpha_v, t_ini)
+
     dict_mchi = calc_mchi.calcular_diagramas_desde_matriz(matriz_model_code, b, h, rec_sup, rec_inf, n_sup, n_inf, fyk, fck, Ec, fct, ecy, esy, Es)
     
     
