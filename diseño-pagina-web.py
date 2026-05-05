@@ -33,7 +33,6 @@ with head_col2:
 if 't_ini_res' not in st.session_state: st.session_state['t_ini_res'] = 0.0
 if 'tipo_ataque' not in st.session_state: st.session_state['tipo_ataque'] = "Carbonatación"
 
-# Creamos las 3 pestañas (Añadida la de Pretensado/Cortante)
 tab_ini, tab_mc, tab_pret = st.tabs([" Tiempo de Iniciación", " Capacidad Estructural", " Pretensado"])
 
 # ==========================================
@@ -78,21 +77,14 @@ with tab_ini:
 # ==========================================
 # PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
-# ==========================================
-# PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
-# ==========================================
-
 with tab_mc:
-    # 1. Recuperación de variables de sesión
     t_ini = st.session_state['t_ini_res']
-    t_global = st.session_state.get('t_global', 100) # Asegurar que t_global existe
     atk_type = st.session_state['tipo_ataque']
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
 
     st.subheader("Geometría y Parámetros de Flexión")
     st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años**")
 
-    # 2. Columnas de Inputs
     c1, c2, c3 = st.columns(3)
     with c1: 
         h_val = st.number_input("Canto h [mm]", value=150, key="h_mc")
@@ -106,9 +98,8 @@ with tab_mc:
         fck_val = st.number_input("fck [MPa]", value=25, key="fck_mc")
         n_inf = st.number_input("Nº barras inf.", value=2)
         phi_inf_0 = st.number_input("Φ barras inf. [mm]", value=15)
-        n_sup = 2 # Definir n_sup para que no de error
+        n_sup = 2 
 
-    # Variables adicionales para el diagrama M-Chi
     Ec = 25000
     fct = 3.1
     esy = 0.0021
@@ -116,17 +107,13 @@ with tab_mc:
     Es = 200000
 
     # --- EJECUCIÓN DE CÁLCULOS ---
-    
-    # A. Obtener Matriz de Model Code
-    # Usamos n_sup=2 y phi_sup_0=16 (valores por defecto según tu llamada)
     matriz_model_code = calc_mc.calcular_capacidad_residual(
         t_global, b_val, h_val, rec_sup, rec_inf, 
         n_sup, 16, n_inf, phi_inf_0, 
         fyk, fck_val, icorr_val, alpha_v, t_ini
     )
 
-    # B. Calcular Diagramas M-Chi 
-    # CORRECCIÓN: Usamos las variables _val definidas en los inputs de arriba
+    # CORRECCIÓN: Se pasan las variables correctas (terminadas en _val)
     dict_mchi = calc_mchi.calcular_diagramas_desde_matriz(
         matriz_model_code, 
         b_val, h_val, rec_sup, rec_inf, 
@@ -134,27 +121,21 @@ with tab_mc:
         Ec, fct, ecy, esy, Es
     )
     
-    # C. Extraer tiempos reales para las gráficas (t_v son los años 0, 0.1, 0.2...)
-    # Usamos los índices de la matriz multiplicado por el paso 0.1 para obtener el tiempo real
     t_v = np.arange(0, t_global + 0.1, 0.1)
     
-    # Extraemos m_res (Mrd) de la columna 1 de la matriz original o de la fila 5 de dict_mchi
-    # Usamos dict_mchi[i] donde i es el índice entero del paso de tiempo
+    # CORRECCIÓN: Manejo de índices para evitar errores de redondeo en keys del dict
     m_res = np.array([dict_mchi[i][5, 0] for i in range(len(t_v))])
     
-    # D. Contevect (Degradación geométrica)
     t_cv, df_crit, m_vect = calc_cv.calcular_contevect(
         t_global, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
     )
 
-    # Correcciones para gráficas temporales
     m_max_ref = m_vect[0] 
     m_vect_plot = np.where(t_cv < t_ini, m_max_ref, m_vect)
     m_res_plot = np.where(t_v < t_ini, m_max_ref, m_res)
 
     st.divider()
     
-    # --- VISUALIZACIÓN 1: Mrd vs TIEMPO ---
     st.write("### Comparativa: Momento Resistente vs Tiempo")
     fig_comp = go.Figure()
     fig_comp.add_trace(go.Scatter(x=t_cv, y=m_vect_plot, name="Contevect", line=dict(color='#005293', width=3)))
@@ -165,11 +146,7 @@ with tab_mc:
 
     st.divider()
 
-    # --- VISUALIZACIÓN 2: DIAGRAMA MOMENTO-CURVATURA ---
     st.write("### Diagrama Momento-Curvatura (M-χ)")
-    
-    # Slider para elegir el tiempo a visualizar (mapeado al índice del diccionario)
-    # Mostramos los años reales en el slider
     idx_seleccionado = st.select_slider(
         "Selecciona el año de análisis", 
         options=range(len(t_v)),
@@ -188,7 +165,6 @@ with tab_mc:
         marker=dict(size=8)
     ))
 
-    # Anotaciones
     puntos_nombres = ["Origen", "Fisuración (Bruta)", "Fisuración (Fisurada)", "Fluencia", "Post-Plastificación", "Agotamiento (Mrd)"]
     for j, nombre in enumerate(puntos_nombres):
         fig_mchi.add_annotation(
@@ -205,9 +181,6 @@ with tab_mc:
     st.plotly_chart(fig_mchi, use_container_width=True)
 
 # ==========================================
-# PESTAÑA 3: PRETENSADO (CORTANTE)
-# ==========================================
-# ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
 # ==========================================
 with tab_pret:
@@ -216,8 +189,6 @@ with tab_pret:
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
 
     st.subheader("Configuración de Pretensado y Cortante")
-    st.info(f"Fase de Iniciación actual: **{t_ini:.2f} años**")
-
     col_p1, col_p2, col_p3 = st.columns(3)
     
     with col_p1:
@@ -238,7 +209,6 @@ with tab_pret:
         es_val = st.number_input("Es (Acero) [MPa]", value=200000, key="es_p3")
         icorr_p = st.number_input("Intensidad $i_{corr}$ (pret)", value=2.0, key="icorr_p3")
 
-    # Diccionario de parámetros (Asegúrate de que h_val, b_val, etc. vienen de la Tab 2)
     params_pret = {
         't_global': t_global,
         't_ini': t_ini,
@@ -260,7 +230,6 @@ with tab_pret:
         'alpha': alpha_v
     }
 
-    # --- CÁLCULOS ---
     res_cortante = calc_cor.calcular_degradacion_cortante(params_pret)
     df_v = pd.DataFrame(res_cortante)
 
@@ -268,7 +237,6 @@ with tab_pret:
     df_t = pd.DataFrame(res_tensiones)
 
     st.divider()
-    
     col_g1, col_g2 = st.columns(2)
 
     with col_g1:
@@ -277,7 +245,6 @@ with tab_pret:
         fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['vrdc'], name="Vrd,c", line=dict(color='red', width=3)))
         fig_v.add_vline(x=t_ini, line_dash="dash", line_color="green")
         
-        # ELIMINADO 'bottom=0' que causaba el error y reemplazado por rangemode
         fig_v.update_layout(
             plot_bgcolor='white',
             xaxis_title="Tiempo [años]",
