@@ -45,6 +45,7 @@ def calcular_capacidad_residual(t_ana, b, h, rec_sup, rec_inf, n_sup, phi_sup_0,
         phi_inf_t,         # Diámetro inferior
         np.array(mu_res),  # Mrd
         phi_sup_t          # Diámetro superior
+        mu_res
     ))
     
     return matriz_salida
