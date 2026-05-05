@@ -83,8 +83,9 @@ with tab_ini:
 # ==========================================
 
 with tab_mc:
-    # 1. Recuperación de variables de sesión y parámetros de ataque
+    # 1. Recuperación de variables de sesión
     t_ini = st.session_state['t_ini_res']
+    t_global = st.session_state.get('t_global', 100) # Asegurar que t_global existe
     atk_type = st.session_state['tipo_ataque']
     alpha_v = 2.0 if atk_type == "Carbonatación" else 10.0
 
@@ -94,7 +95,7 @@ with tab_mc:
     # 2. Columnas de Inputs
     c1, c2, c3 = st.columns(3)
     with c1: 
-        h_val = st.number_input("Canto h [mm]", value=150, key="h_mc") # Ajustado a tus valores de prueba
+        h_val = st.number_input("Canto h [mm]", value=150, key="h_mc")
         b_val = st.number_input("Ancho b [mm]", value=300, key="b_mc")
         icorr_val = st.number_input("Intensidad $i_{corr}$", value=0.5, key="icorr_mc")
     with c2: 
@@ -105,6 +106,7 @@ with tab_mc:
         fck_val = st.number_input("fck [MPa]", value=25, key="fck_mc")
         n_inf = st.number_input("Nº barras inf.", value=2)
         phi_inf_0 = st.number_input("Φ barras inf. [mm]", value=15)
+        n_sup = 2 # Definir n_sup para que no de error
 
     # Variables adicionales para el diagrama M-Chi
     Ec = 25000
@@ -115,21 +117,32 @@ with tab_mc:
 
     # --- EJECUCIÓN DE CÁLCULOS ---
     
-    # A. Model Code y Diagramas M-Chi Evolutivos
-    # Llamamos a tu nueva función que devuelve el diccionario de matrices
+    # A. Obtener Matriz de Model Code
+    # Usamos n_sup=2 y phi_sup_0=16 (valores por defecto según tu llamada)
     matriz_model_code = calc_mc.calcular_capacidad_residual(
-    t_global, b_val, h_val, rec_sup, rec_inf, 
-    2, 16, n_inf, phi_inf_0, 
-    fyk, fck_val, icorr_val, alpha_v, t_ini)
+        t_global, b_val, h_val, rec_sup, rec_inf, 
+        n_sup, 16, n_inf, phi_inf_0, 
+        fyk, fck_val, icorr_val, alpha_v, t_ini
+    )
 
-    dict_mchi = calc_mchi.calcular_diagramas_desde_matriz(matriz_model_code, b, h, rec_sup, rec_inf, n_sup, n_inf, fyk, fck, Ec, fct, ecy, esy, Es)
+    # B. Calcular Diagramas M-Chi 
+    # CORRECCIÓN: Usamos las variables _val definidas en los inputs de arriba
+    dict_mchi = calc_mchi.calcular_diagramas_desde_matriz(
+        matriz_model_code, 
+        b_val, h_val, rec_sup, rec_inf, 
+        n_sup, n_inf, fyk, fck_val, 
+        Ec, fct, ecy, esy, Es
+    )
     
+    # C. Extraer tiempos reales para las gráficas (t_v son los años 0, 0.1, 0.2...)
+    # Usamos los índices de la matriz multiplicado por el paso 0.1 para obtener el tiempo real
+    t_v = np.arange(0, t_global + 0.1, 0.1)
     
-    # Extraemos m_res (Mrd) para la gráfica temporal de la columna correspondiente
-    t_v = np.array(list(dict_mchi.keys()))
-    m_res = np.array([dict_mchi[t][5, 0] for t in t_v]) # El Mrd es el Punto 4 (fila 5)
+    # Extraemos m_res (Mrd) de la columna 1 de la matriz original o de la fila 5 de dict_mchi
+    # Usamos dict_mchi[i] donde i es el índice entero del paso de tiempo
+    m_res = np.array([dict_mchi[i][5, 0] for i in range(len(t_v))])
     
-    # B. Contevect (Mantenemos tu lógica anterior)
+    # D. Contevect (Degradación geométrica)
     t_cv, df_crit, m_vect = calc_cv.calcular_contevect(
         t_global, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
     )
@@ -154,31 +167,28 @@ with tab_mc:
 
     # --- VISUALIZACIÓN 2: DIAGRAMA MOMENTO-CURVATURA ---
     st.write("### Diagrama Momento-Curvatura (M-χ)")
-    st.write("Selecciona un año para ver el estado de la sección:")
     
-    # Slider para elegir el tiempo a visualizar
-    t_seleccionado = st.select_slider(
-        "Año de análisis", 
-        options=sorted(list(dict_mchi.keys())),
-        value=0.0
+    # Slider para elegir el tiempo a visualizar (mapeado al índice del diccionario)
+    # Mostramos los años reales en el slider
+    idx_seleccionado = st.select_slider(
+        "Selecciona el año de análisis", 
+        options=range(len(t_v)),
+        format_func=lambda x: f"{t_v[x]:.1f} años"
     )
 
-    # Obtenemos la matriz [M, Chi] para ese año
-    matriz_mchi = dict_mchi[t_seleccionado]
+    matriz_mchi = dict_mchi[idx_seleccionado]
 
     fig_mchi = go.Figure()
-    
-    # Dibujamos el diagrama (Curvatura en X, Momento en Y)
     fig_mchi.add_trace(go.Scatter(
         x=matriz_mchi[:, 1], 
         y=matriz_mchi[:, 0],
         mode='lines+markers',
-        name=f"Año {t_seleccionado}",
+        name=f"Año {t_v[idx_seleccionado]:.1f}",
         line=dict(color='firebrick', width=3),
         marker=dict(size=8)
     ))
 
-    # Anotaciones de los puntos clave
+    # Anotaciones
     puntos_nombres = ["Origen", "Fisuración (Bruta)", "Fisuración (Fisurada)", "Fluencia", "Post-Plastificación", "Agotamiento (Mrd)"]
     for j, nombre in enumerate(puntos_nombres):
         fig_mchi.add_annotation(
@@ -187,14 +197,11 @@ with tab_mc:
         )
 
     fig_mchi.update_layout(
-        title=f"Estado de la sección al año {t_seleccionado}",
+        title=f"Estado de la sección al año {t_v[idx_seleccionado]:.1f}",
         xaxis_title="Curvatura χ [1/m]",
         yaxis_title="Momento M [kNm]",
-        plot_bgcolor='white',
-        xaxis=dict(gridcolor='#f5f5f5'),
-        yaxis=dict(gridcolor='#f5f5f5')
+        plot_bgcolor='white'
     )
-
     st.plotly_chart(fig_mchi, use_container_width=True)
 
 # ==========================================
