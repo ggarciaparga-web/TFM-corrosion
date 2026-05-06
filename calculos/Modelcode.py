@@ -1,7 +1,7 @@
 import numpy as np
 
 def calcular_capacidad_residual(t_global, b_val, h_val, rec_sup, rec_inf, n_sup, phi_sup_0, n_inf, phi_inf_0, 
-                               fyk, fck, i_corr, alpha, t_ini):
+                               fyk, fck, i_corr, current_alpha, t_ini):
     
     # Definición del paso de tiempo
     tiempos = np.arange(0, t_ana + 0.1, 0.1)
@@ -12,8 +12,8 @@ def calcular_capacidad_residual(t_global, b_val, h_val, rec_sup, rec_inf, n_sup,
     px = 0.0116 * i_corr * tiempos_corrosion
     
     # Actualización de diámetros remanentes
-    phi_sup_t = np.maximum(phi_sup_0 - (alpha * px), 0)
-    phi_inf_t = np.maximum(phi_inf_0 - (alpha * px), 0)
+    phi_sup_t = np.maximum(phi_sup_0 - (current_alpha * px), 0)
+    phi_inf_t = np.maximum(phi_inf_0 - (current_alpha * px), 0)
     
     # Cálculo de Áreas de acero remanentes
     as_inf_t = n_inf * (np.pi * phi_inf_t**2) / 4
