@@ -38,7 +38,7 @@ with head_col1:
     )
 
 with head_col2:
-    icorr = st.number_input(
+    icorr_val = st.number_input(
         "$I_{corr}$ [$\mu A/cm^2$]", 
         value=0.5, 
         step=0.1, 
@@ -179,7 +179,7 @@ with tab_mc:
 
     with c5:
         fyk = st.number_input("$f_{yk}$", value=500)
-        fck = st.number_input("$f_{ck}$ [MPa]", value=25)
+        fck_val = st.number_input("$f_{ck}$ [MPa]", value=25)
 
     # Drawing the section in the last column
     with c_viz:
