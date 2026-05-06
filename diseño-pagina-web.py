@@ -48,7 +48,7 @@ with tab_ini:
     
     if tipo_ataque == "Carbonatación":
         with c2: rh_real = st.slider("Humedad $RH_{real}$ [%]", 0, 100, 50); rh_ref = 65.0
-        with c3: dias_ll = st.number_input("Días de lluvia/año", value=50); psr = 0.1
+        with c3: dias_ll = st.number_input("Días de lluvia/año", value=50); psr = 0
         with c4: racc = st.number_input("$R_{acc}$", value=4541.32); csd = 0.00082
         kcd, kt, ge, fe, bw, t0 = 0.67, 1.25, 2.5, 5.0, 0.446, 0.0767
         t_i, w_i, y_vals, t_ini_calc = calc_ini.calcular_carbonatacion(d_mm, rh_real, rh_ref, ge, fe, kcd, kt, csd, racc, psr, dias_ll, bw, t0, t_global)
