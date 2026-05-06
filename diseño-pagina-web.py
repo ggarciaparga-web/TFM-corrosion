@@ -26,7 +26,7 @@ head_col1, head_col2 = st.columns([3, 1])
 with head_col1:
     st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
 with head_col2:
-    t_global = st.number_input("Tiempo de estudio total [años]", value=250, step=1, key="global_time")
+    t_global = st.number_input("Study time [years]", value=250, step=1, key="global_time")
 
 # --- VARIABLES DE SESIÓN ---
 if 't_ini_res' not in st.session_state: st.session_state['t_ini_res'] = 0.0
