@@ -219,7 +219,7 @@ with tab_mc:
     
     # A. Model Code (Approach 1)
     t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(
-        t_global, b_val, h_val, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
+        t_global, b_val, h_val, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha, t_ini
     )
     
     # B. Contevect (Degradación geométrica con puntos críticos)
