@@ -38,9 +38,7 @@ tab_ini, tab_mc, tab_pret = st.tabs(["Initation period", "Residual strength", "P
 # ==========================================
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
 # ==========================================
-# ==========================================
-# PESTAÑA 1: TIEMPO DE INICIACIÓN
-# ==========================================
+
 with tab_ini:
     tipo_ataque = st.radio("Seleccione el fenómeno a analizar:", ["Carbonatación", "Cloruros"], horizontal=True)
     st.session_state['tipo_ataque'] = tipo_ataque
@@ -91,11 +89,12 @@ with tab_ini:
             tref = st.number_input("$T_{ref}$ [K]", value=293.0)
         
         with c4: 
-            dcrm = st.number_input("$D_{rcm}$ [$m^2/s$]", value=1.95e-12, format="%.2e")
+            dcrm = st.number_input("$D_{rcm}$ [$mm^2/año$]", value=224.53, format="%.2e")
             a_age = st.number_input("$a$ (ageing) [-]", value=0.4902)
 
         with c5:
             ke = st.number_input("$k_{e}$ [-]", value=1.0) # Valor por defecto basado en tu llamada
+            kt = st.number_input("$k_{t}$ [-]", value=1.0)
             b_cl = st.number_input("$b_{cl}$ [-]", value=4800.0) # Basado en tu valor original
 
         # Ajuste de t0_cl para cloruros si es necesario
