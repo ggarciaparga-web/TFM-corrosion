@@ -129,88 +129,72 @@ with tab_ini:
 # ==========================================
 # PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
-import plotly.graph_objects as go
-
+# ==========================================
+# TAB: MECHANICAL CAPACITY
+# ==========================================
 with tab_mc:
-    # 1. Session State Recovery
     t_ini = st.session_state.get('t_ini_res', 0.0)
     atk_type = st.session_state.get('tipo_ataque', "Carbonation")
-    alpha_v = 2.0 if atk_type == "Carbonation" else 10.0
     
-    st.info(f"Initiation time: **{t_ini:.2f} years** (Analysis: {atk_type})")
+    st.caption(f"**Initiation:** {t_ini:.2f} yrs | **Type:** {atk_type}")
 
-    # 2. Input Columns
-    c1, c2, c3 = st.columns([1, 1, 1])
+    # Using 6 columns to fit inputs and the drawing in one single row
+    c1, c2, c3, c4, c5, c_viz = st.columns([1, 1, 1, 1, 1, 2])
+
+    with c1:
+        h_val = st.number_input("$h$ [mm]", value=300, key="h_mc")
+        b_val = st.number_input("$b$ [mm]", value=150, key="b_mc")
     
-    with c1: 
-        h_val = st.number_input("Depth $h$ [mm]", value=300, key="h_mc")
-        b_val = st.number_input("Width $b$ [mm]", value=150, key="b_mc")
-        icorr_val = st.number_input("Corrosion rate $i_{corr}$ [$\mu A/cm^2$]", value=0.5, key="icorr_mc")
-    
-    with c2: 
-        rec_sup = st.number_input("Top Cover $c_{top}$ [mm]", value=20)
-        rec_inf = st.number_input("Bottom Cover $c_{bot}$ [mm]", value=20)
-        fyk = st.number_input("Yield Strength $f_{yk}$ [MPa]", value=500)
-    
-    with c3: 
-        fck_val = st.number_input("Concrete $f_{ck}$ [MPa]", value=25, key="fck_mc")
-        # Top Reinforcement
-        n_sup = st.number_input("Top bars qty.", value=2, min_value=0)
-        phi_sup = st.number_input("Top $\Phi$ [mm]", value=10)
-        # Bottom Reinforcement
-        n_inf = st.number_input("Bottom bars qty.", value=2, min_value=0)
-        phi_inf_0 = st.number_input("Bottom $\Phi$ [mm]", value=16)
-
-    st.divider()
-
-    # 3. Cross-Section Visualization
-    col_res, col_viz = st.columns([1.5, 1])
-
-    with col_viz:
-        st.subheader("Section Preview")
+    with c2:
+        rec_s = st.number_input("$c_{top}$ [mm]", value=20)
+        rec_i = st.number_input("$c_{bot}$ [mm]", value=20)
         
-        # Plotly logic to draw the section to scale
+    with c3:
+        n_sup = st.number_input("$n_{top}$", value=2, min_value=0)
+        p_sup = st.number_input("$\Phi_{top}$", value=10)
+
+    with c4:
+        n_inf = st.number_input("$n_{bot}$", value=2, min_value=0)
+        p_inf = st.number_input("$\Phi_{bot}$", value=16)
+
+    with c5:
+        fyk = st.number_input("$f_{yk}$", value=500)
+        icorr = st.number_input("$i_{corr}$", value=0.5)
+
+    # Drawing the section in the last column
+    with c_viz:
         fig_sec = go.Figure()
 
-        # Draw Concrete Section (Rectangle)
+        # Concrete Rect
         fig_sec.add_shape(type="rect", x0=0, y0=0, x1=b_val, y1=h_val,
-                          line=dict(color="Black", width=3), fillcolor="LightGrey", opacity=0.5)
+                          line=dict(color="Black", width=2), fillcolor="LightGrey", opacity=0.3)
 
-        # Draw Top Bars
+        # Top Bars (Red)
         if n_sup > 0:
-            spacing_sup = (b_val - 2*rec_sup) / (n_sup - 1) if n_sup > 1 else 0
-            x_start = rec_sup if n_sup > 1 else b_val/2
+            spacing_s = (b_val - 2*rec_s) / (n_sup - 1) if n_sup > 1 else 0
+            x_s = rec_s if n_sup > 1 else b_val/2
             for i in range(n_sup):
-                fig_sec.add_trace(go.Scatter(
-                    x=[x_start + i*spacing_sup], y=[h_val - rec_sup],
-                    mode='markers', marker=dict(size=phi_sup, color="DarkRed"),
-                    showlegend=False, name="Top Rebar"
-                ))
+                fig_sec.add_trace(go.Scatter(x=[x_s + i*spacing_s], y=[h_val - rec_s],
+                    mode='markers', marker=dict(size=p_sup*0.8, color="FireBrick"), showlegend=False))
 
-        # Draw Bottom Bars
+        # Bottom Bars (Blue)
         if n_inf > 0:
-            spacing_inf = (b_val - 2*rec_inf) / (n_inf - 1) if n_inf > 1 else 0
-            x_start_inf = rec_inf if n_inf > 1 else b_val/2
+            spacing_i = (b_val - 2*rec_i) / (n_inf - 1) if n_inf > 1 else 0
+            x_i = rec_i if n_inf > 1 else b_val/2
             for i in range(n_inf):
-                fig_sec.add_trace(go.Scatter(
-                    x=[x_start_inf + i*spacing_inf], y=[rec_inf],
-                    mode='markers', marker=dict(size=phi_inf_0, color="Blue"),
-                    showlegend=False, name="Bottom Rebar"
-                ))
+                fig_sec.add_trace(go.Scatter(x=[x_i + i*spacing_i], y=[rec_i],
+                    mode='markers', marker=dict(size=p_inf*0.8, color="RoyalBlue"), showlegend=False))
 
-        # Layout Settings (Fixed aspect ratio to ensure it looks like a real section)
         fig_sec.update_layout(
-            xaxis=dict(range=[-20, b_val+20], showgrid=False, zeroline=False, visible=False),
-            yaxis=dict(range=[-20, h_val+20], showgrid=False, zeroline=False, visible=False, scaleanchor="x", scaleratio=1),
-            height=300, margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
+            height=180, margin=dict(l=5, r=5, t=5, b=5),
             plot_bgcolor='rgba(0,0,0,0)'
         )
         st.plotly_chart(fig_sec, use_container_width=True)
 
-    with col_res:
-        st.subheader("Analysis Results")
-        # You can place your mechanical capacity calculations here
-        st.write("Calculations pending for residual capacity...")
+    st.divider()
+    # Residual capacity calculations would follow here...
     # --- EJECUCIÓN DE CÁLCULOS ---
     
     # A. Model Code (Approach 1)
