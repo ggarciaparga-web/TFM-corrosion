@@ -26,7 +26,7 @@ def calcular_cloruros(d_mm, c0, cs, ccrit, be, tref, treal, kt, t0_cl, a, dcrm, 
     ke = np.exp(be * (1/tref - 1/treal))
     
     at = (t0_cl / tiempos)**a
-    d_app = ke * dcrm * kt * at
+    d_app = ke * (dcrm*1e-6*86400*365) * kt * at
     
     # Z = recubrimiento / (2 * raiz(Dapp * t))
     z = d_mm / (2 * np.sqrt(d_app * tiempos))
