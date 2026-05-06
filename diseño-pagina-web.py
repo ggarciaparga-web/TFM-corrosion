@@ -152,6 +152,7 @@ with tab_mc:
     with c3:
         n_sup = st.number_input("$n_{top}$", value=2, min_value=0)
         p_sup = st.number_input("$\Phi_{top}$", value=10)
+        icorr = st.number_input("$I_{corr}$", value=0.5, step=0.1)
 
     with c4:
         n_inf = st.number_input("$n_{bot}$", value=2, min_value=0)
@@ -159,7 +160,7 @@ with tab_mc:
 
     with c5:
         fyk = st.number_input("$f_{yk}$", value=500)
-        icorr = st.number_input("$i_{corr}$", value=0.5)
+        fck = st.number_input("$f_{ck}$ [MPa]", value=25)
 
     # Drawing the section in the last column
     with c_viz:
