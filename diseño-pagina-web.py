@@ -191,7 +191,7 @@ with tab_mc:
 
         # Top Bars (Red)
         if n_sup > 0:
-            spacing_s = (b_val - 2*rec_s) / (n_sup - 1) if n_sup > 1 else 0
+            spacing_s = (b_val - 2*rec_sup) / (n_sup - 1) if n_sup > 1 else 0
             x_s = rec_s if n_sup > 1 else b_val/2
             for i in range(n_sup):
                 fig_sec.add_trace(go.Scatter(x=[x_s + i*spacing_s], y=[h_val - rec_s],
