@@ -38,40 +38,43 @@ tab_ini, tab_mc, tab_pret = st.tabs(["Initation period", "Residual strength", "P
 # ==========================================
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
 # ==========================================
-
+# ==========================================
+# PESTAÑA 1: TIEMPO DE INICIACIÓN
+# ==========================================
 with tab_ini:
-    tipo_ataque = st.radio("Seleccione el fenómeno a analizar:", ["Carbonatación", "Cloruros"], horizontal=True)
+    tipo_ataque = st.radio("Fenómeno:", ["Carbonatación", "Cloruros"], horizontal=True)
     st.session_state['tipo_ataque'] = tipo_ataque
 
-    # Definimos las 5 columnas base para los inputs principales
-    c1, c2, c3, c4, c5 = st.columns(5)
+    # Usamos columnas con anchos específicos para que estén más pegadas
+    # [1, 1, 1, 1, 1] crea espacios iguales, pero puedes ajustarlos
+    c1, c2, c3, c4, c5 = st.columns([1.2, 1.2, 1.2, 1.5, 1.2])
 
     with c1:
-        d_mm = st.number_input("Recubrimiento $c$ [mm]", value=30.0)
+        d_mm = st.number_input("$c$ [mm]", value=30.0, help="Recubrimiento")
 
     if tipo_ataque == "Carbonatación":
         with c2: 
-            rh_real = st.slider("$RH_{real}$ [%]", 0, 100, 50)
+            rh_real = st.number_input("$RH_{real}$ [%]", 0, 100, 50)
             hre = st.number_input("$H_{re}$ [%]", value=65.0)
         
         with c3: 
-            dias_ll = st.number_input("Lluvia [días/año]", value=50)
+            dias_ll = st.number_input("$lluvia$ [d/y]", value=50)
             psr = st.number_input("$P_{sr}$ [-]", value=0.0)
         
         with c4: 
-            racc = st.number_input("$R_{acc}$ [$mm^2/y / kg/m^3$]", value=4541.32)
+            racc = st.number_input("$R_{acc}$ [unidades]", value=4541.32)
             csd = st.number_input("$C_{s,d}$ [kg/m³]", value=0.00082, format="%.5f")
         
         with c5:
             kcd = st.number_input("$k_{cd}$ [-]", value=0.67)
             kt = st.number_input("$k_{t}$ [-]", value=1.0)
 
-        with st.expander("Parámetros de ajuste adicionales"):
+        with st.expander("Ajustes Pro"):
             ca1, ca2, ca3, ca4 = st.columns(4)
-            with ca1: ge = st.number_input("$g_{e}$ [-]", value=2.5)
-            with ca2: fe = st.number_input("$f_{e}$ [-]", value=5.0)
-            with ca3: bw = st.number_input("$b_{w}$ [-]", value=0.446)
-            with ca4: t0 = st.number_input("$t_{0}$ [-]", value=0.0767)
+            with ca1: ge = st.number_input("$g_{e}$", value=2.5)
+            with ca2: fe = st.number_input("$f_{e}$", value=5.0)
+            with ca3: bw = st.number_input("$b_{w}$", value=0.446)
+            with ca4: t0 = st.number_input("$t_{0}$", value=0.0767)
 
         t_i, w_i, y_vals, t_ini_calc = calc_ini.calcular_carbonatacion(
             d_mm, rh_real, hre, ge, fe, kcd, kt, csd, racc, psr, dias_ll, bw, t0, t_global
@@ -80,58 +83,42 @@ with tab_ini:
 
     else:  # SECCIÓN CLORUROS
         with c2: 
-            c0 = st.number_input("$C_{0}$ [%]", value=0.1)
-            cs = st.number_input("$C_{s}$ [%]", value=4.0)
-            ccrit = st.number_input("$C_{crit}$ [%]", value=0.6)
-        
-        with c3: 
-            treal = st.number_input("$T_{real}$ [K]", value=289.6)
-            tref = st.number_input("$T_{ref}$ [K]", value=293.0)
-        
+            c0 = st.number_input("$C_{0}$", value=0.1)
+            cs = st.number_input("$C_{s}$", value=4.0)
+        with c3:
+            ccrit = st.number_input("$C_{crit}$", value=0.6)
+            treal = st.number_input("$T_{r}$ [K]", value=289.6)
         with c4: 
-            dcrm = st.number_input("$D_{app}$^-12 [$m^2/año$]", value=224.53, format="%.2e")
-            a_age = st.number_input("$a$ (ageing) [-]", value=0.4902)
-
+            tref = st.number_input("$T_{ref}$ [K]", value=293.0)
+            dcrm = st.number_input("$D_{rcm}$", value=1.95e-12, format="%.2e")
         with c5:
-            ke = st.number_input("$k_{e}$ [-]", value=1.0) # Valor por defecto basado en tu llamada
-            kt = st.number_input("$k_{t}$ [-]", value=1.0)
-            b_cl = st.number_input("$b_{cl}$ [-]", value=4800.0) # Basado en tu valor original
+            a_age = st.number_input("$a$", value=0.4902)
+            b_cl = st.number_input("$b_{cl}$", value=4800.0)
 
-        # Ajuste de t0_cl para cloruros si es necesario
-        t0_cl = 0.0767 
-
+        ke, t0_cl = 1.0, 0.0767
         t_i, dapp, z, y_vals, t_ini_calc = calc_ini.calcular_cloruros(
             d_mm, c0, cs, ccrit, b_cl, tref, treal, ke, t0_cl, a_age, dcrm, t_global
         )
         y_label, limit_val = "Concentración [%]", ccrit
 
-    # --- Resultados Comunes ---
+    # --- Resultados ---
     st.session_state['t_ini_res'] = t_ini_calc if t_ini_calc is not None else 0.0
-
     st.divider()
-    res1, res2 = st.columns([1, 2])
     
+    res1, res2 = st.columns([1, 2.5]) # Gráfico más ancho que la métrica
     with res1:
         if t_ini_calc and t_ini_calc > 0: 
-            st.metric("Tiempo de Iniciación", f"{t_ini_calc:.2f} años")
+            st.metric("Iniciación", f"{t_ini_calc:.2f} años")
         else: 
-            st.error(f"Sin iniciación detectada en {t_global} años.")
+            st.warning("No inicia")
             
     with res2:
-        if t_i is not None and len(t_i) > 0:
+        if t_i is not None:
             fig_ini = go.Figure()
-            fig_ini.add_trace(go.Scatter(x=t_i, y=y_vals, fill='tozeroy', 
-                                         line=dict(color='#e17000', width=3), name="Avance"))
-            fig_ini.add_trace(go.Scatter(x=t_i, y=[limit_val]*len(t_i), 
-                                         line=dict(color='black', dash='dash'), name="Límite"))
-            fig_ini.update_layout(
-                plot_bgcolor='white', 
-                xaxis_title="Tiempo [años]", 
-                yaxis_title=y_label,
-                margin=dict(l=0, r=0, t=30, b=0)
-            )
+            fig_ini.add_trace(go.Scatter(x=t_i, y=y_vals, fill='tozeroy', line=dict(color='#e17000')))
+            fig_ini.add_trace(go.Scatter(x=t_i, y=[limit_val]*len(t_i), line=dict(color='black', dash='dash')))
+            fig_ini.update_layout(height=250, margin=dict(l=0,r=0,t=0,b=0), plot_bgcolor='white')
             st.plotly_chart(fig_ini, use_container_width=True)
-
 # ==========================================
 # PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
