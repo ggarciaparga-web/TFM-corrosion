@@ -58,9 +58,16 @@ tab_ini, tab_mc, tab_pret = st.tabs(["Initation period", "Residual strength", "P
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
 # ==========================================
 with tab_ini:
-    # Radio for phenomenon selection
     attack_type = st.radio("Select analysis phenomenon:", ["Carbonation", "Chlorides"], horizontal=True)
-    st.session_state['tipo_ataque'] = attack_type
+    
+    # 1. Guardamos el tipo de ataque para que otras pestañas lo sepan
+    st.session_state['attack_type'] = attack_type
+
+    # 2. Lógica para definir alpha automáticamente
+    if attack_type == "Carbonation":
+        st.session_state['alpha'] = 2.0
+    else:
+        st.session_state['alpha'] = 10.0
 
     # 5 columns with custom widths for a condensed layout
     c1, c2, c3, c4, c5 = st.columns([1.2, 1.2, 1.2, 1.5, 1.2])
