@@ -203,7 +203,7 @@ with tab_mc:
             x_i = rec_inf if n_inf > 1 else b_val/2
             for i in range(n_inf):
                 fig_sec.add_trace(go.Scatter(x=[x_i + i*spacing_i], y=[rec_inf],
-                    mode='markers', marker=dict(size=p_inf*0.8, color="#228B22"), showlegend=False))
+                    mode='markers', marker=dict(size=phi_inf_0*0.8, color="#228B22"), showlegend=False))
 
         fig_sec.update_layout(
             xaxis=dict(visible=False),
