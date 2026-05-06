@@ -1,7 +1,7 @@
 import numpy as np
 
 def calcular_capacidad_residual(t_global, b_val, h_val, rec_sup, rec_inf, n_sup, phi_sup_0, n_inf, phi_inf_0, 
-                               fyk, fck, i_corr, current_alpha, t_ini)
+                               fyk, fck, i_corr, current_alpha, t_ini):
     
     # Definición del paso de tiempo
     tiempos = np.arange(0, t_global + 0.1, 0.1)
