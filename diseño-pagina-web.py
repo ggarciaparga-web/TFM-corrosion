@@ -165,7 +165,7 @@ with tab_mc:
         b_val = st.number_input("$b$ [mm]", value=150, key="b_mc")
     
     with c2:
-        rec_s = st.number_input("$c_{top}$ [mm]", value=20)
+        rec_sup = st.number_input("$c_{top}$ [mm]", value=20)
         rec_i = st.number_input("$c_{bot}$ [mm]", value=20)
         
     with c3:
