@@ -56,7 +56,7 @@ with tab_ini:
     else:
         with c2: c0 = 0.1; cs =4.0 ; ccrit = 0.6 #para exposicion XS3 XD3
         with c3: treal = 289.6; tref = 293.0 #Ax zona de interaccion de cloruros y carbonatacion
-        with c4: dcrm = 880; a_age = 0.4902
+        with c4: dcrm = 1.95e-12; a_age = 0.4902
         t_i, dapp, z, y_vals, t_ini_calc = calc_ini.calcular_cloruros(d_mm, c0, cs, ccrit, 4800, tref, treal, 1.0, 0.0767, a_age, dcrm, t_global)
         y_label, limit_val = "Concentración [%]", ccrit
 
