@@ -1,7 +1,7 @@
 import numpy as np
 
 def calcular_capacidad_residual(t_ana, b_val, h_val, rec_sup, rec_inf, n_sup, phi_sup_0, n_inf, phi_inf_0, 
-                               fyk, fck, i_corr, alpha, t_ini_calculado):
+                               fyk, fck, i_corr, alpha, t_ini):
     
     tiempos = np.arange(0, t_ana + 0.1, 0.1)
     
