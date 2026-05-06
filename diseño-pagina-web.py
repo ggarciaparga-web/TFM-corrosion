@@ -27,6 +27,7 @@ with head_col1:
     st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
 with head_col2:
     t_global = st.number_input("Study time [years]", value=250, step=1, key="global_time")
+    icorr = st.number_input("$I_{corr}$", value=0.5, step=0.1)
 
 # --- VARIABLES DE SESIÓN ---
 if 't_ini_res' not in st.session_state: st.session_state['t_ini_res'] = 0.0
@@ -152,7 +153,7 @@ with tab_mc:
     with c3:
         n_sup = st.number_input("$n_{top}$", value=2, min_value=0)
         p_sup = st.number_input("$\Phi_{top}$", value=10)
-        icorr = st.number_input("$I_{corr}$", value=0.5, step=0.1)
+        #icorr = st.number_input("$I_{corr}$", value=0.5, step=0.1)
 
     with c4:
         n_inf = st.number_input("$n_{bot}$", value=2, min_value=0)
