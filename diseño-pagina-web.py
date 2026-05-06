@@ -177,7 +177,7 @@ with tab_mc:
             x_s = rec_s if n_sup > 1 else b_val/2
             for i in range(n_sup):
                 fig_sec.add_trace(go.Scatter(x=[x_s + i*spacing_s], y=[h_val - rec_s],
-                    mode='markers', marker=dict(size=p_sup*0.8, color="FireBrick"), showlegend=False))
+                    mode='markers', marker=dict(size=p_sup*0.8, color="#FF0000"), showlegend=False))
 
         # Bottom Bars (Blue)
         if n_inf > 0:
@@ -185,7 +185,7 @@ with tab_mc:
             x_i = rec_i if n_inf > 1 else b_val/2
             for i in range(n_inf):
                 fig_sec.add_trace(go.Scatter(x=[x_i + i*spacing_i], y=[rec_i],
-                    mode='markers', marker=dict(size=p_inf*0.8, color="RoyalBlue"), showlegend=False))
+                    mode='markers', marker=dict(size=p_inf*0.8, color="#00C853"), showlegend=False))
 
         fig_sec.update_layout(
             xaxis=dict(visible=False),
