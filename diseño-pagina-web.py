@@ -50,7 +50,8 @@ with head_col2:
 # --- VARIABLES DE SESIÓN ---
 if 't_ini_res' not in st.session_state: st.session_state['t_ini_res'] = 0.0
 if 'tipo_ataque' not in st.session_state: st.session_state['tipo_ataque'] = "Carbonatación"
-
+if 'alpha' not in st.session_state: 
+    st.session_state['alpha'] = 2.0  # Valor por defecto inicial
 # Creamos las 3 pestañas
 tab_ini, tab_mc, tab_pret = st.tabs(["Initation period", "Residual strength", "Prestressed"])
 
