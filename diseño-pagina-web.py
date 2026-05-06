@@ -325,3 +325,41 @@ with tab_pret:
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         st.plotly_chart(fig_t, use_container_width=True)
+
+#llamamos a las funciones
+# --- EJECUCIÓN DE CÁLCULOS ---
+
+# 1. Recuperamos los valores de la sesión para asegurar persistencia
+t_ini_session = st.session_state.get('t_ini_res', 0.0)
+alpha_session = st.session_state.get('alpha', 2.0)
+
+# 2. Llamada a la función (asegúrate de que los nombres coincidan con tus inputs)
+t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(
+    t_global,       # 1. Tiempo global del header
+    b_val,          # 2. Ancho de la sección
+    h_val,          # 3. Canto de la sección
+    rec_sup,        # 4. Recubrimiento superior
+    rec_inf,        # 5. Recubrimiento inferior
+    n_sup,          # 6. Nº barras superiores
+    p_sup,          # 7. Diámetro barras superiores
+    n_inf,          # 8. Nº barras inferiores
+    phi_inf_0,      # 9. Diámetro barras inferiores
+    fyk,            # 10. Límite elástico acero
+    fck_val,        # 11. Resistencia concreto
+    icorr_val,      # 12. Intensidad de corrosión del header
+    alpha_session,  # 13. Alpha (current_alpha en tu función)
+    t_ini_session   # 14. Tiempo de iniciación de la pestaña 1
+)
+#graficamos
+st.subheader("Residual Flexural Capacity")
+fig_res = go.Figure()
+
+fig_res.add_trace(go.Scatter(x=t_v, y=m_res, name="Model Code Standard", line=dict(color="#228B22", width=3)))
+fig_res.add_trace(go.Scatter(x=t_v, y=m_cons, name="Model Code Conservative", line=dict(color="#FF0000", dash="dash")))
+
+fig_res.update_layout(
+    xaxis_title="Time [years]",
+    yaxis_title="Moment Capacity [kNm]",
+    hovermode="x unified"
+)
+st.plotly_chart(fig_res, use_container_width=True)
