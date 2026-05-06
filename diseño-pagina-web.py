@@ -89,7 +89,7 @@ with tab_ini:
             tref = st.number_input("$T_{ref}$ [K]", value=293.0)
         
         with c4: 
-            dcrm = st.number_input("$D_{rcm}$ [$mm^2/año$]", value=224.53, format="%.2e")
+            dcrm = st.number_input("$D_{app}$ [$m^2/año$]", value=224.53, format="%.2e")
             a_age = st.number_input("$a$ (ageing) [-]", value=0.4902)
 
         with c5:
