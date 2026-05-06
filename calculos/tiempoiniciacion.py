@@ -23,8 +23,8 @@ def calcular_carbonatacion(d_mm, rh_real, rh_ref, ge, fe, kcd, kt, csd, racc, ps
 def calcular_cloruros(d_mm, c0, cs, ccrit, be, tref, treal, kt, t0, a, dcrm, t_final):
     tiempos = np.arange(0.1, t_final + 0.1, 0.1)
     
-    #ke = np.exp(be * (1/tref - 1/treal))
-    ke=1
+    ke = np.exp(be * (1/tref - 1/treal))
+    
     at = (t0 / tiempos)**a
     d_app = ke * dcrm * kt * at
     
