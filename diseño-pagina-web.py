@@ -24,16 +24,16 @@ st.markdown("""
 # --- CABECERA ---
 head_col1, head_col2 = st.columns([3, 1])
 with head_col1:
-    st.markdown('<p class="title-text">Plataforma de Durabilidad y Capacidad Residual</p>', unsafe_allow_html=True)
+    st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
 with head_col2:
-    t_global = st.number_input("Tiempo de estudio total [años]", value=100, step=1, key="global_time")
+    t_global = st.number_input("Tiempo de estudio total [años]", value=250, step=1, key="global_time")
 
 # --- VARIABLES DE SESIÓN ---
 if 't_ini_res' not in st.session_state: st.session_state['t_ini_res'] = 0.0
 if 'tipo_ataque' not in st.session_state: st.session_state['tipo_ataque'] = "Carbonatación"
 
-# Creamos las 3 pestañas (Añadida la de Pretensado/Cortante)
-tab_ini, tab_mc, tab_pret = st.tabs([" Tiempo de Iniciación", " Capacidad Estructural", " Pretensado"])
+# Creamos las 3 pestañas
+tab_ini, tab_mc, tab_pret = st.tabs(["Initation period", "Residual strength", "Prestressed"])
 
 # ==========================================
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
@@ -44,15 +44,40 @@ with tab_ini:
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        d_mm = st.number_input("Recubrimiento $c$ [mm]", value=30.0)
+    d_mm = st.number_input("Recubrimiento $c$ [mm]", value=30.0)
+
+if tipo_ataque == "Carbonatación":
+    with c2: 
+        rh_real = st.slider("Humedad $RH_{real}$ [%]", 0, 100, 50)
+        hre = st.number_input("$H_{re}$ [%]", value=65.0)
     
-    if tipo_ataque == "Carbonatación":
-        with c2: rh_real = st.slider("Humedad $RH_{real}$ [%]", 0, 100, 50); rh_ref = 65.0
-        with c3: dias_ll = st.number_input("Días de lluvia/año", value=50); psr = 0
-        with c4: racc = st.number_input("$R_{acc}$", value=4541.32); csd = 0.00082
-        kcd, kt, ge, fe, bw, t0 = 0.67, 1, 2.5, 5.0, 0.446, 0.0767
-        t_i, w_i, y_vals, t_ini_calc = calc_ini.calcular_carbonatacion(d_mm, rh_real, rh_ref, ge, fe, kcd, kt, csd, racc, psr, dias_ll, bw, t0, t_global)
-        y_label, limit_val = "Profundidad [mm]", d_mm
+    with c3: 
+        dias_ll = st.number_input("Días de lluvia/año", value=50)
+        psr = st.number_input("$P_{sr}$ [-]", value=0.0)
+    
+    with c4: 
+        racc = st.number_input("$R_{acc}$ [mm²/year / kg/m³]", value=4541.32)
+        csd = st.number_input("$C_{s,d}$ [kg/m³]", value=0.00082)
+    
+    with c5:
+        kcd = st.number_input("$k_{cd}$ [-]", value=0.67)
+        kt = st.number_input("$k_{t}$ [-]", value=1.0)
+
+    # Estos suelen ser parámetros fijos de calibración, 
+    # pero aquí los tienes como inputs según pediste:
+    with st.expander("Parámetros de ajuste adicionales"):
+        ca1, ca2, ca3, ca4 = st.columns(4)
+        with ca1: ge = st.number_input("$g_{e}$ [-]", value=2.5)
+        with ca2: fe = st.number_input("$f_{e}$ [-]", value=5.0)
+        with ca3: bw = st.number_input("$b_{w}$ [-]", value=0.446)
+        with ca4: t0 = st.number_input("$t_{0}$ [-]", value=0.0767)
+
+    # Llamada a la función con las nuevas variables
+    t_i, w_i, y_vals, t_ini_calc = calc_ini.calcular_carbonatacion(
+        d_mm, rh_real, hre, ge, fe, kcd, kt, csd, racc, psr, dias_ll, bw, t0, t_global
+    )
+    
+    y_label, limit_val = "Profundidad [mm]", d_mm
     else:
         with c2: c0 = 0.1; cs =4.0 ; ccrit = 0.6 #para exposicion XS3 XD3
         with c3: treal = 289.6; tref = 293.0 #Ax zona de interaccion de cloruros y carbonatacion
