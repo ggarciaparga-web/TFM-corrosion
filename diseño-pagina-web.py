@@ -175,7 +175,7 @@ with tab_mc:
 
     with c4:
         n_inf = st.number_input("$n_{bot}$", value=2, min_value=0)
-        p_inf = st.number_input("$\Phi_{bot}$", value=16)
+        phi_inf_0 = st.number_input("$\Phi_{bot}$", value=16)
 
     with c5:
         fyk = st.number_input("$f_{yk}$", value=500)
