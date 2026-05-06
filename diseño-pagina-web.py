@@ -21,13 +21,31 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- CABECERA ---
-head_col1, head_col2 = st.columns([3, 1])
+# --- HEADER ---
+# 1. Main Title (Full width)
+st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
+
+# 2. Global Inputs Row (Horizontal layout below the title)
+# We use a 4-column layout [1, 1, 1, 1] to keep the inputs compact and aligned to the left
+head_col1, head_col2, head_col3, head_col4 = st.columns([1, 1, 1, 1])
+
 with head_col1:
-    st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
+    t_global = st.number_input(
+        "Study time [years]", 
+        value=250, 
+        step=1, 
+        key="global_time"
+    )
+
 with head_col2:
-    t_global = st.number_input("Study time [years]", value=250, step=1, key="global_time")
-    icorr = st.number_input("$I_{corr}$", value=0.5, step=0.1)
+    icorr = st.number_input(
+        "$I_{corr}$ [$\mu A/cm^2$]", 
+        value=0.5, 
+        step=0.1, 
+        key="global_icorr"
+    )
+
+# head_col3 and head_col4 remain empty to prevent the inputs from stretching across the screen
 
 # --- VARIABLES DE SESIÓN ---
 if 't_ini_res' not in st.session_state: st.session_state['t_ini_res'] = 0.0
