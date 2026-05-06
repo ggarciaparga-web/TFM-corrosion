@@ -222,85 +222,12 @@ with tab_mc:
         st.plotly_chart(fig_sec, use_container_width=True)
 
     st.divider()
-    # Residual capacity calculations would follow here...
+    
     # --- EJECUCIÓN DE CÁLCULOS ---
-    
-    # A. Model Code (Approach 1)
-    t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(
-        t_global, b_val, h_val, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck_val, icorr_val, current_alpha, t_ini
-    )
-    
-    # B. Contevect (Degradación geométrica con puntos críticos)
-    t_cv, df_crit, m_vect = calc_cv.calcular_contevect(
-        t_global, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha_v, t_ini
-    )
 
-    # --- CORRECCIÓN ESTRATÉGICA DE LA GRÁFICA ---
-    # Obtenemos el valor de capacidad máxima al inicio (t=0 o t=t_ini)
-    m_max_ref = m_vect[0] 
+   
 
-    # Forzamos que Contevect sea constante hasta t_ini
-    m_vect_plot = np.where(t_cv < t_ini, m_max_ref, m_vect)
-    
-    # Forzamos que Model Code sea constante hasta t_ini
-    m_res_plot = np.where(t_v < t_ini, m_max_ref, m_res)
 
-    st.divider()
-    
-    # --- VISUALIZACIÓN CON PLOTLY ---
-    st.write("### Comparativa: Momento Resistente vs Tiempo")
-    
-    fig_comp = go.Figure()
-
-    # Curva Contevect (Línea Azul Gruesa)
-    fig_comp.add_trace(go.Scatter(
-        x=t_cv, y=m_vect_plot, 
-        name="Contevect (Degradación Geométrica)", 
-        line=dict(color='#005293', width=3)
-    ))
-
-    # Curva Model Code (Línea Naranja Punteada para diferenciar)
-    fig_comp.add_trace(go.Scatter(
-        x=t_v, y=m_res_plot, 
-        name="Model Code (Sección Constante)", 
-        line=dict(color='#e17000', width=2, dash='solid')
-    ))
-
-    # Eventos Críticos (Diamantes rojos)
-    # Filtramos para que solo muestre puntos a partir de t_ini
-    df_puntos_vis = df_crit[df_crit["Tiempo"] >= t_ini - 0.1]
-    
-    fig_comp.add_trace(go.Scatter(
-        x=df_puntos_vis["Tiempo"], y=df_puntos_vis["Mu"], 
-        mode='markers',
-        marker=dict(color='red', size=11, symbol='diamond', line=dict(width=1, color='black')),
-        name="Eventos Críticos (Puntos de quiebre)"
-    ))
-
-    # Línea de Iniciación (Referencia Vertical)
-    fig_comp.add_vline(
-        x=t_ini, line_width=2, line_dash="dot", line_color="green", 
-        annotation_text="FIN INICIACIÓN", annotation_position="top left"
-    )
-
-    # Ajustes finales del Layout
-    fig_comp.update_layout(
-        plot_bgcolor='white',
-        xaxis_title="Tiempo [años]",
-        yaxis_title="Mrd [kNm]",
-        xaxis=dict(range=[0, t_global], gridcolor='#f5f5f5'),
-        yaxis=dict(range=[0, m_max_ref * 1.15], gridcolor='#f5f5f5'),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        hovermode="x unified"
-    )
-
-    st.plotly_chart(fig_comp, use_container_width=True)
-
-    
-
-# ==========================================
-# PESTAÑA 3: PRETENSADO (CORTANTE)
-# ==========================================
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
 # ==========================================
