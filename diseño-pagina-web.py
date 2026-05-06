@@ -162,7 +162,7 @@ with tab_ini:
 with tab_mc:
     t_ini = st.session_state.get('t_ini_res', 0.0)
     atk_type = st.session_state.get('tipo_ataque', "Carbonation")
-    
+    current_alpha = st.session_state.get('alpha', 2.0)
     st.caption(f"**Initiation:** {t_ini:.2f} yrs | **Type:** {atk_type}")
 
     # Using 6 columns to fit inputs and the drawing in one single row
@@ -227,7 +227,7 @@ with tab_mc:
     
     # A. Model Code (Approach 1)
     t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(
-        t_global, b_val, h_val, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck_val, icorr_val, alpha, t_ini
+        t_global, b_val, h_val, rec_sup, rec_inf, 2, 16, n_inf, phi_inf_0, fyk, fck_val, icorr_val, current_alpha, t_ini
     )
     
     # B. Contevect (Degradación geométrica con puntos críticos)
