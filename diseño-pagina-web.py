@@ -54,9 +54,9 @@ with tab_ini:
         t_i, w_i, y_vals, t_ini_calc = calc_ini.calcular_carbonatacion(d_mm, rh_real, rh_ref, ge, fe, kcd, kt, csd, racc, psr, dias_ll, bw, t0, t_global)
         y_label, limit_val = "Profundidad [mm]", d_mm
     else:
-        with c2: c0 = 0.1; cs = 2.0; ccrit = 0.6
-        with c3: treal = 289.6; tref = 293.0
-        with c4: dcrm = 224.53; a_age = 0.4288
+        with c2: c0 = 0.1; cs =4.0 ; ccrit = 0.6 #para exposicion XS3 XD3
+        with c3: treal = 289.6; tref = 293.0 #Ax zona de interaccion de cloruros y carbonatacion
+        with c4: dcrm = 224.53; a_age = 0.4902
         t_i, dapp, z, y_vals, t_ini_calc = calc_ini.calcular_cloruros(d_mm, c0, cs, ccrit, 4800, tref, treal, 1.0, 0.0767, a_age, dcrm, t_global)
         y_label, limit_val = "Concentración [%]", ccrit
 
