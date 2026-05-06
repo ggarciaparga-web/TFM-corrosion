@@ -166,7 +166,7 @@ with tab_mc:
     
     with c2:
         rec_sup = st.number_input("$c_{top}$ [mm]", value=20)
-        rec_i = st.number_input("$c_{bot}$ [mm]", value=20)
+        rec_inf = st.number_input("$c_{bot}$ [mm]", value=20)
         
     with c3:
         n_sup = st.number_input("$n_{top}$", value=2, min_value=0)
@@ -192,15 +192,15 @@ with tab_mc:
         # Top Bars (Red)
         if n_sup > 0:
             spacing_s = (b_val - 2*rec_sup) / (n_sup - 1) if n_sup > 1 else 0
-            x_s = rec_s if n_sup > 1 else b_val/2
+            x_s = rec_sup if n_sup > 1 else b_val/2
             for i in range(n_sup):
                 fig_sec.add_trace(go.Scatter(x=[x_s + i*spacing_s], y=[h_val - rec_s],
                     mode='markers', marker=dict(size=p_sup*0.8, color="#FF0000"), showlegend=False))
 
         # Bottom Bars (Blue)
         if n_inf > 0:
-            spacing_i = (b_val - 2*rec_i) / (n_inf - 1) if n_inf > 1 else 0
-            x_i = rec_i if n_inf > 1 else b_val/2
+            spacing_i = (b_val - 2*rec_inf) / (n_inf - 1) if n_inf > 1 else 0
+            x_i = rec_inf if n_inf > 1 else b_val/2
             for i in range(n_inf):
                 fig_sec.add_trace(go.Scatter(x=[x_i + i*spacing_i], y=[rec_i],
                     mode='markers', marker=dict(size=p_inf*0.8, color="#228B22"), showlegend=False))
