@@ -412,41 +412,10 @@ with tab_pret:
         fig_sec_p.update_layout(
             xaxis=dict(visible=False), 
             yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
-            height=200, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)'
+            height=180, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)'
         )
         st.plotly_chart(fig_sec_p, use_container_width=True)
 
     st.divider()
 
-    # --- CÁLCULOS ---
-    params_p3 = {
-        't_global': t_global, 't_ini': t_ini_session,
-        'h': h_p, 'bw': b_p, 'rec_inf': ri_p,
-        'phi_inf_0': phi_p_val, 'n_inf': np_p,
-        'Ae': ae_p3, 'fck': fck_p, 'fpy': fpy_p3,
-        'icorr': icorr_val, 'alpha': current_alpha,
-        'Med': 0.0, 'Ved': 30.0, 'dg': 25.0, 'Es': 200000
-    }
-
-    # Llamadas a funciones
-    res_v = calc_cor.calcular_degradacion_cortante(params_p3)
-    res_t = calc_pre.calcular_tensiones_pretensado(params_p3)
-
-    # Gráficas
-    g1, g2 = st.columns(2)
-    with g1:
-        st.markdown("### Shear Capacity $V_{rd,c}$")
-        fig_v = go.Figure()
-        df_v = pd.DataFrame(res_v)
-        fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['vrdc'], line=dict(color='red', width=3)))
-        fig_v.update_layout(template="plotly_white", height=350, margin=dict(l=10,r=10,t=10,b=10))
-        st.plotly_chart(fig_v, use_container_width=True)
-        
-    with g2:
-        st.markdown("### Concrete Stresses")
-        df_t = pd.DataFrame(res_t)
-        fig_t = go.Figure()
-        fig_t.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_inferior'], name="Bottom"))
-        fig_t.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_superior'], name="Top"))
-        fig_t.update_layout(template="plotly_white", height=350, margin=dict(l=10,r=10,t=10,b=10))
-        st.plotly_chart(fig_t, use_container_width=True)
+    
