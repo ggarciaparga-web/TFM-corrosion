@@ -194,24 +194,52 @@ with tab_mc:
         fck_val = st.number_input("$f_{ck}$ [MPa]", value=25, key="fck_mc")
 
     # --- BLOQUE 2: DIBUJO DE LA SECCIÓN (Visualización) ---
+    # --- DIBUJO DE LA SECCIÓN (Actualizado con armadura superior) ---
     with c_viz:
         fig_sec = go.Figure()
-        # Rectángulo de hormigón
+
+        # 1. Rectángulo de hormigón
         fig_sec.add_shape(type="rect", x0=0, y0=0, x1=b_val, y1=h_val,
                           line=dict(color="Black", width=2), fillcolor="LightGrey", opacity=0.3)
-        # Armadura inferior (Verde)
+
+        # 2. Armadura Superior (Rojo)
+        if n_sup > 0:
+            # Calculamos espaciado si hay más de una barra
+            spacing_s = (b_val - 2*rec_sup) / (n_sup - 1) if n_sup > 1 else 0
+            x_s = rec_sup if n_sup > 1 else b_val/2
+            for i in range(n_sup):
+                fig_sec.add_trace(go.Scatter(
+                    x=[x_s + i*spacing_s], 
+                    y=[h_val - rec_sup], # Posición arriba: canto total menos recubrimiento
+                    mode='markers', 
+                    marker=dict(size=p_sup*0.8, color="#FF0000"), # Color rojo
+                    showlegend=False,
+                    name="Top Rebar"
+                ))
+
+        # 3. Armadura Inferior (Verde)
         if n_inf > 0:
             spacing_i = (b_val - 2*rec_inf) / (n_inf - 1) if n_inf > 1 else 0
             x_i = rec_inf if n_inf > 1 else b_val/2
             for i in range(n_inf):
-                fig_sec.add_trace(go.Scatter(x=[x_i + i*spacing_i], y=[rec_inf],
-                    mode='markers', marker=dict(size=phi_inf_0*0.8, color="#228B22"), showlegend=False))
-        
-        fig_sec.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
-                              height=180, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_sec, use_container_width=True)
+                fig_sec.add_trace(go.Scatter(
+                    x=[x_i + i*spacing_i], 
+                    y=[rec_inf], # Posición abajo: recubrimiento inferior
+                    mode='markers', 
+                    marker=dict(size=phi_inf_0*0.8, color="#228B22"), # Color verde
+                    showlegend=False,
+                    name="Bottom Rebar"
+                ))
 
-    st.divider()
+        # Configuración de ejes para que el dibujo no se deforme
+        fig_sec.update_layout(
+            xaxis=dict(visible=False, range=[-10, b_val+10]),
+            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1, range=[-10, h_val+10]),
+            height=200, 
+            margin=dict(l=5, r=5, t=5, b=5),
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+        st.plotly_chart(fig_sec, use_container_width=True)
     
     # --- BLOQUE 3: CÁLCULOS Y GRÁFICAS ---
     # Llamada a la función del modelo Contevect
