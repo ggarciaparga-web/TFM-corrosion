@@ -45,24 +45,40 @@ if img_base64:
         f"""
         <style>
         .header-container {{
-            background-image: linear-gradient(rgba(255,255,255,0.2), rgba(255,255,255,0.2)), 
+            background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), 
                               url("data:image/png;base64,{img_base64}");
+            
+            /* 1. ESTRECHAR AL MÁXIMO: Reducimos el padding vertical a solo 15px o 20px */
+            padding: 20px 20px; 
+            
+            /* 2. CENTRAR EN LAS PILAS: 
+               Si las pilas están en la mitad inferior de tu imagen, usa un valor alto (70%-80%). 
+               Si quieres subirlas o bajarlas, toca este segundo número. */
+            background-position: 50% 65%; 
+            
+            /* 3. MANTENER PROPORCIÓN */
             background-size: cover;
-            background-position: bottom center; /* Prioriza la parte inferior de la acuarela */
-            padding: 80px 20px 150px 20px;     /* Mucho espacio abajo para que se vea la pintura */
-            border-radius: 15px;
+            
+            border-radius: 8px;
             text-align: center;
             margin-bottom: 20px;
-            border: 1px solid #eeeeee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            /* 4. ALTURA FIJA: Forzamos a que la franja no crezca */
+            height: 100px; 
+            overflow: hidden;
         }}
+        
         .title-text {{
             color: #1a1a1a;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            font-size: 42px;
-            font-weight: 800;
-            text-shadow: 2px 2px 10px rgba(255,255,255,1); /* Sombra para que se lea sobre la imagen */
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 28px; /* Texto un poco más pequeño para que quepa en la franja estrecha */
+            font-weight: 700;
+            text-shadow: 2px 2px 8px rgba(255,255,255,1);
             margin: 0;
-            letter-spacing: -1px;
+            padding: 0;
         }}
         </style>
         
