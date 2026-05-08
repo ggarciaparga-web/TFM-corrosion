@@ -242,6 +242,24 @@ with tab_mc:
         st.plotly_chart(fig_sec, use_container_width=True)
     
     # --- BLOQUE 3: CÁLCULOS Y GRÁFICAS ---
+    # --- EJECUCIÓN DE CÁLCULOS (Modelcode.py) ---
+    # Llamamos a calc_mc que importaste como 'from calculos import Modelcode as calc_mc'
+    t_v, px_v, phi_v, mu_std, mu_cons = calc_mc.calcular_capacidad_residual(
+        t_global=t_global,
+        b_val=b_val,
+        h_val=h_val,
+        rec_sup=rec_sup,
+        rec_inf=rec_inf,
+        n_sup=n_sup,
+        phi_sup_0=p_sup,      # Usamos p_sup del input
+        n_inf=n_inf,
+        phi_inf_0=phi_inf_0,  # Usamos phi_inf_0 del input
+        fyk=fyk,
+        fck=fck_val,
+        i_corr=icorr_val,
+        current_alpha=current_alpha,
+        t_ini=t_ini_session
+    )
     # Llamada a la función del modelo Contevect
     t_v, df_criticos, mu_v = calc_cv.calcular_contevect(
         t_ana=t_global,
@@ -259,24 +277,52 @@ with tab_mc:
     )
 
     # Visualización de resultados
-    st.subheader("Residual Flexural Capacity (Contevect Model)")
-    col_graph, col_table = st.columns([2, 1])
+   # 3. Curva MODEL CODE CONSERVATIVE (Rojo)
+        fig_res.add_trace(go.Scatter(
+            x=t_v_mc, y=mu_cons_mc, 
+            name="Model Code Conservative", 
+            line=dict(color="#d62728", width=2, dash="dot")
+        ))
 
-    with col_graph:
-        fig_res = go.Figure()
-        # Línea de capacidad
-        fig_res.add_trace(go.Scatter(x=t_v, y=mu_v, name="Moment Capacity", line=dict(color="#228B22", width=3)))
-        # Puntos críticos (diamantes rojos)
-        fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"], mode='markers',
-                                     name='Critical Events', marker=dict(color='FireBrick', size=10, symbol='diamond'),
-                                     hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"))
+        # 4. PUNTOS CRÍTICOS (Diamantes rojos del Contevect)
+        fig_res.add_trace(go.Scatter(
+            x=df_criticos["Tiempo"], y=df_criticos["Mu"], 
+            mode='markers',
+            name='Contevect Critical Events', 
+            marker=dict(color='FireBrick', size=10, symbol='diamond'),
+            hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"
+        ))
+
+        # Configuración estética de la gráfica
+        fig_res.update_layout(
+            xaxis_title="Time [years]", 
+            yaxis_title="Moment Capacity [kNm]", 
+            hovermode="x unified", 
+            template="plotly_white", 
+            height=500,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
         
-        fig_res.update_layout(xaxis_title="Time [years]", yaxis_title="Moment Capacity [kNm]", 
-                              hovermode="x unified", template="plotly_white", height=400)
+        # Añadir línea de tiempo de iniciación
+        fig_res.add_vline(x=t_ini_session, line_dash="dash", line_color="gray", opacity=0.5)
+
         st.plotly_chart(fig_res, use_container_width=True)
 
     with col_table:
-        st.write("**Key Degradation Steps**")
-        st.dataframe(df_criticos[["Tiempo", "Px", "Mu"]],
-                     column_config={"Tiempo": "Time [y]", "Px": "Corr. [mm]", "Mu": "Mu [kNm]"},
-                     hide_index=True, use_container_width=True)
+        st.write("**Key Degradation Steps (Contevect)**")
+        st.dataframe(
+            df_criticos[["Tiempo", "Px", "Mu"]],
+            column_config={
+                "Tiempo": st.column_config.NumberColumn("Time [y]", format="%.1f"),
+                "Px": st.column_config.NumberColumn("Corr. [mm]", format="%.3f"),
+                "Mu": st.column_config.NumberColumn("Mu [kNm]", format="%.2f")
+            },
+            hide_index=True, 
+            use_container_width=True
+        )
+        
+        # Opcional: Métricas comparativas al final del tiempo global
+        st.divider()
+        st.write("**Comparison at end of study**")
+        st.metric("Contevect Mu", f"{mu_v_cv[-1]:.2f} kNm")
+        st.metric("MC Standard Mu", f"{mu_std_mc[-1]:.2f} kNm")
