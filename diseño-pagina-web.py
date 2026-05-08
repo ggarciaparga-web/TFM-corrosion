@@ -475,12 +475,3 @@ with tab_pret:
 
     st.plotly_chart(fig_stresses, use_container_width=True)
 
-    # Tabla de datos detallados
-    with st.expander("View detailed stress data"):
-        st.dataframe(df_t.style.format({
-            "t": "{:d}",
-            "px": "{:.4f}",
-            "mcorr": "{:.2%}",
-            "sigma_inferior": "{:.2f}",
-            "sigma_superior": "{:.2f}"
-        }))
