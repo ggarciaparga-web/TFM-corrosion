@@ -224,7 +224,76 @@ with tab_mc:
     st.divider()
     
     # --- EJECUCIÓN DE CÁLCULOS ---
+# --- EJECUCIÓN DE CÁLCULOS (Dentro de tab_mc) ---
+    
+    # 1. Llamada a la función desde el módulo Contevect (calc_cv)
+    # Usamos los nombres de variables definidos en tus inputs superiores
+    t_vector, df_eventos, mu_vector = calc_cv.calcular_contevect(
+        t_ana=t_global,          # Horizonte de tiempo definido en el header
+        b_val=b_val,
+        h_val=h_val,
+        rec_sup=rec_sup,
+        rec_inf=rec_inf,
+        n_inf=n_inf,
+        phi_inf_0=phi_inf_0,
+        fyk=fyk,
+        fck_val=fck_val,
+        i_corr=icorr_val,        # Icorr definido en el header
+        alpha=current_alpha,      # Alpha definido por el tipo de ataque en Tab 1
+        t_ini=t_ini              # Tiempo de iniciación calculado en Tab 1
+    )
 
+    # 2. Layout de resultados (Gráfica y Tabla)
+    col_graph, col_table = st.columns([2, 1])
+
+    with col_graph:
+        st.subheader("Bending Capacity Evolution")
+        fig_mu = go.Figure()
+
+        # Línea de capacidad residual
+        fig_mu.add_trace(go.Scatter(
+            x=t_vector, 
+            y=mu_vector,
+            mode='lines',
+            name='Ultimate Moment $M_u(t)$',
+            line=dict(color='#228B22', width=3)
+        ))
+
+        # Puntos críticos (Eventos de la tabla df_eventos)
+        fig_mu.add_trace(go.Scatter(
+            x=df_eventos["Tiempo"],
+            y=df_eventos["Mu"],
+            mode='markers',
+            name='Critical Events',
+            marker=dict(color='FireBrick', size=10, symbol='diamond'),
+            hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"
+        ))
+
+        fig_mu.update_layout(
+            xaxis_title="Time [years]",
+            yaxis_title="Moment Capacity [kN·m]",
+            hovermode="x unified",
+            height=400,
+            template="plotly_white",
+            margin=dict(l=0, r=0, t=30, b=0),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig_mu, use_container_width=True)
+
+    with col_table:
+        st.subheader("Key Degradation Steps")
+        # Formateamos la tabla para que sea más legible
+        st.dataframe(
+            df_eventos[["Tiempo", "Px", "A1", "Mu"]],
+            column_config={
+                "Tiempo": st.column_config.NumberColumn("Time [y]", format="%.1f"),
+                "Px": st.column_config.NumberColumn("Penetration [mm]", format="%.3f"),
+                "A1": st.column_config.NumberColumn("Area [mm²]", format="%.1f"),
+                "Mu": st.column_config.NumberColumn("Mu [kNm]", format="%.2f"),
+            },
+            hide_index=True,
+            use_container_width=True
+        )
    
 
 
