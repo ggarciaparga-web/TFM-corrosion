@@ -346,54 +346,52 @@ with tab_mc:
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
 # ==========================================
+# ==========================================
+# PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
+# ==========================================
 with tab_pret:
-    # 1. Recuperación de variables de entorno (Tab 1)
+    # 1. Recuperación de variables globales
     t_ini_session = st.session_state.get('t_ini_res', 0.0)
     current_alpha = st.session_state.get('alpha', 2.0)
     atk_type = st.session_state.get('attack_type', "Carbonation")
 
     st.caption(f"**Análisis de Pretensado** | Iniciación: {t_ini_session:.2f} años | Ataque: {atk_type}")
 
-    # --- BLOQUE 1: INPUTS (Organizados como en tu imagen) ---
-    # Usamos 6 columnas para replicar el estilo visual de los inputs
-    row1_col1, row1_col2, row1_col3, row1_col4, row1_col5, row1_viz = st.columns([1, 1, 1, 1, 1, 2])
+    # --- BLOQUE DE INPUTS CONDENSADO (6 columnas + dibujo) ---
+    c1, c2, c3, c4, c5, c6, c_viz = st.columns([1, 1, 1, 1, 1, 1, 2.5])
 
-    with row1_col1:
+    with c1:
         h_p = st.number_input("$h$ [mm]", value=h_val, key="h_p3")
         b_p = st.number_input("$b$ [mm]", value=b_val, key="b_p3")
     
-    with row1_col2:
+    with c2:
         rs_p = st.number_input("$c_{top}$ [mm]", value=rec_sup, key="rs_p3")
         ri_p = st.number_input("$c_{bot}$ [mm]", value=rec_inf, key="ri_p3")
         
-    with row1_col3:
+    with c3:
         nt_p = st.number_input("$n_{top}$", value=n_sup, key="nt_p3")
         pt_p = st.number_input("$\Phi_{top}$", value=p_sup, key="pt_p3")
 
-    with row1_col4:
+    with c4:
         np_p = st.number_input("$n_{bot}$ (Torones)", value=2, key="np_p3")
         phi_p_val = st.number_input("$\Phi_{p}$ [mm]", value=14.0, key="phip_p3")
 
-    with row1_col5:
+    with c5:
+        ae_p3 = st.number_input("$A_e$ [mm]", value=92.0, key="ae_p3_val")
+        fpy_p3 = st.number_input("$f_{py}$ [MPa]", value=1860, key="fpy_p3_val")
+
+    with c6:
         fyk_p = st.number_input("$f_{yk}$", value=fyk, key="fyk_p3")
         fck_p = st.number_input("$f_{ck}$ [MPa]", value=fck_val, key="fck_p3")
 
-    # Nueva fila de inputs específicos para Pretensado (Ae y fpy)
-    st.markdown("---")
-    c_p1, c_p2, c_p3 = st.columns([1, 1, 3])
-    with c_p1:
-        ae_p3 = st.number_input("$A_e$ (Excentricidad) [mm]", value=92.0, key="ae_p3_val")
-    with c_p2:
-        fpy_p3 = st.number_input("$f_{py}$ [MPa]", value=1860, key="fpy_p3_val")
-
-    # --- BLOQUE 2: DIBUJO DE LA SECCIÓN (Armadura inferior = Pretensado) ---
-    with row1_viz:
+    # --- DIBUJO DE LA SECCIÓN ---
+    with c_viz:
         fig_sec_p = go.Figure()
-        # Rectángulo
+        # Hormigón
         fig_sec_p.add_shape(type="rect", x0=0, y0=0, x1=b_p, y1=h_p,
                           line=dict(color="Black", width=2), fillcolor="LightGrey", opacity=0.3)
         
-        # 1. Armadura Superior Pasiva (Rojo)
+        # Armadura Superior Pasiva (Puntos Rojos)
         if nt_p > 0:
             spacing_s = (b_p - 2*rs_p) / (nt_p - 1) if nt_p > 1 else 0
             x_s = rs_p if nt_p > 1 else b_p/2
@@ -401,42 +399,54 @@ with tab_pret:
                 fig_sec_p.add_trace(go.Scatter(x=[x_s + i*spacing_s], y=[h_p - rs_p],
                     mode='markers', marker=dict(size=pt_p*0.8, color="#FF0000"), showlegend=False))
 
-        # 2. Armadura Inferior Activa / Pretensado (Verde)
-        # La posición Y se calcula: Centro (h/2) - Excentricidad (Ae)
+        # Pretensado (Diamantes Verdes en posición Ae)
         y_pretensado = (h_p / 2) - ae_p3
-        
         if np_p > 0:
             spacing_p = (b_p - 2*ri_p) / (np_p - 1) if np_p > 1 else 0
             x_p = ri_p if np_p > 1 else b_p/2
             for i in range(np_p):
                 fig_sec_p.add_trace(go.Scatter(x=[x_p + i*spacing_p], y=[y_pretensado],
-                    mode='markers', marker=dict(size=phi_p_val*1.0, color="#228B22", symbol="diamond"), 
-                    name="Torón Pretensado", showlegend=False))
+                    mode='markers', marker=dict(size=phi_p_val*1.1, color="#228B22", symbol="diamond"), 
+                    showlegend=False))
 
-        fig_sec_p.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
-                              height=230, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)')
+        fig_sec_p.update_layout(
+            xaxis=dict(visible=False), 
+            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
+            height=200, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)'
+        )
         st.plotly_chart(fig_sec_p, use_container_width=True)
 
-    # --- BLOQUE 3: CÁLCULOS ---
-    # Preparamos el diccionario para tus funciones
+    st.divider()
+
+    # --- CÁLCULOS ---
     params_p3 = {
         't_global': t_global, 't_ini': t_ini_session,
         'h': h_p, 'bw': b_p, 'rec_inf': ri_p,
-        'phi_inf_0': phi_p_val, 'n_inf': np_p, # Pasamos los datos del pretensado como armadura principal
+        'phi_inf_0': phi_p_val, 'n_inf': np_p,
         'Ae': ae_p3, 'fck': fck_p, 'fpy': fpy_p3,
         'icorr': icorr_val, 'alpha': current_alpha,
         'Med': 0.0, 'Ved': 30.0, 'dg': 25.0, 'Es': 200000
     }
 
-    # Llamada a tus funciones de la carpeta calculos
+    # Llamadas a funciones
     res_v = calc_cor.calcular_degradacion_cortante(params_p3)
     res_t = calc_pre.calcular_tensiones_pretensado(params_p3)
 
     # Gráficas
     g1, g2 = st.columns(2)
     with g1:
-        st.markdown("### Resistencia a Cortante")
-        st.line_chart(pd.DataFrame(res_v).set_index('t')['vrdc'])
+        st.markdown("### Shear Capacity $V_{rd,c}$")
+        fig_v = go.Figure()
+        df_v = pd.DataFrame(res_v)
+        fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['vrdc'], line=dict(color='red', width=3)))
+        fig_v.update_layout(template="plotly_white", height=350, margin=dict(l=10,r=10,t=10,b=10))
+        st.plotly_chart(fig_v, use_container_width=True)
+        
     with g2:
-        st.markdown("### Tensiones Hormigón")
-        st.line_chart(pd.DataFrame(res_t).set_index('t')[['sigma_inferior', 'sigma_superior']])
+        st.markdown("### Concrete Stresses")
+        df_t = pd.DataFrame(res_t)
+        fig_t = go.Figure()
+        fig_t.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_inferior'], name="Bottom"))
+        fig_t.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_superior'], name="Top"))
+        fig_t.update_layout(template="plotly_white", height=350, margin=dict(l=10,r=10,t=10,b=10))
+        st.plotly_chart(fig_t, use_container_width=True)
