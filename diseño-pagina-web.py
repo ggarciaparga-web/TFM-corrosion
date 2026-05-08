@@ -52,7 +52,7 @@ if img_base64:
             padding: 80px 20px 150px 20px;     /* Mucho espacio abajo para que se vea la pintura */
             border-radius: 15px;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border: 1px solid #eeeeee;
         }}
         .title-text {{
