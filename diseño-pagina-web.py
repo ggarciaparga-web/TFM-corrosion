@@ -25,9 +25,7 @@ st.markdown("""
 # --- HEADER ---
 #st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
 # --- BLOQUE PARA EL BANNER CON ACUARELA ---
-Aquí tienes el código completo y listo para funcionar. He integrado las librerías, la lógica de carga de la imagen, los estilos CSS para que el título esté sobre la acuarela (priorizando la parte inferior de la imagen) y la estructura de tus importaciones.
 
-Copia este bloque en tu archivo app.py:
 
 Python
 import streamlit as st
