@@ -343,16 +343,14 @@ with tab_mc:
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
 # ==========================================
-# ==========================================
-# PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
-# ==========================================
+
 with tab_pret:
     # 1. Recuperación de variables de estado
     t_ini_session = st.session_state.get('t_ini_res', 0.0)
     current_alpha = st.session_state.get('alpha', 2.0)
     atk_type = st.session_state.get('attack_type', "Carbonation")
 
-    st.caption(f"**Análisis de Pretensado** | Iniciación: {t_ini_session:.2f} años | Ataque: {atk_type}")
+    st.caption(f" Initiation: {t_ini_session:.2f} años | Type: {atk_type}")
 
     # --- BLOQUE DE INPUTS CONDENSADO (6 columnas + dibujo) ---
     c1, c2, c3, c4, c5, c6, c_viz = st.columns([1, 1, 1, 1, 1, 1, 2.5])
@@ -435,7 +433,7 @@ with tab_pret:
     df_t = pd.DataFrame(res_tensiones)
 
     # --- VISUALIZACIÓN DE TENSIONES ---
-    st.subheader("Concrete Stresses Evolution (Prestressing Effect)")
+    st.subheader("Prestressing stress evolution")
     
     fig_stresses = go.Figure()
 
