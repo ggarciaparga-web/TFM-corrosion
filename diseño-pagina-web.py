@@ -277,7 +277,28 @@ with tab_mc:
     )
 
     # Visualización de resultados
-   # 3. Curva MODEL CODE CONSERVATIVE (Rojo)
+    # --- VISUALIZACIÓN DE RESULTADOS ---
+    st.subheader("Residual Flexural Capacity Comparison")
+    col_graph, col_table = st.columns([2, 1])
+
+    with col_graph:
+        fig_res = go.Figure()
+
+        # 1. Curva CONTEVECT (Verde oscuro)
+        fig_res.add_trace(go.Scatter(
+            x=t_v_cv, y=mu_v_cv, 
+            name="Contevect Model", 
+            line=dict(color="#228B22", width=4)
+        ))
+
+        # 2. Curva MODEL CODE STANDARD (Azul)
+        fig_res.add_trace(go.Scatter(
+            x=t_v_mc, y=mu_std_mc, 
+            name="Model Code Standard", 
+            line=dict(color="#1f77b4", width=2, dash="dash")
+        ))
+
+        # 3. Curva MODEL CODE CONSERVATIVE (Rojo)
         fig_res.add_trace(go.Scatter(
             x=t_v_mc, y=mu_cons_mc, 
             name="Model Code Conservative", 
@@ -326,3 +347,5 @@ with tab_mc:
         st.write("**Comparison at end of study**")
         st.metric("Contevect Mu", f"{mu_v_cv[-1]:.2f} kNm")
         st.metric("MC Standard Mu", f"{mu_std_mc[-1]:.2f} kNm")
+    
+  
