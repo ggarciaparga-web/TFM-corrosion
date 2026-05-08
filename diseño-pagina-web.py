@@ -25,35 +25,61 @@ st.markdown("""
 # --- HEADER ---
 #st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
 # --- BLOQUE PARA EL BANNER CON ACUARELA ---
-def get_base64(bin_file):
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
+Aquí tienes el código completo y listo para funcionar. He integrado las librerías, la lógica de carga de la imagen, los estilos CSS para que el título esté sobre la acuarela (priorizando la parte inferior de la imagen) y la estructura de tus importaciones.
 
-try:
-    # Intentamos cargar tu acuarela
-    img_base64 = get_base64("captra.png")
-    
+Copia este bloque en tu archivo app.py:
+
+Python
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+import base64
+from calculos import tiempoiniciacion as calc_ini
+from calculos import Modelcode as calc_mc
+from calculos import Contevect as calc_cv
+from calculos import Cortante as calc_cor  
+from calculos import pretensado as calc_pre
+
+# Configuración de la página (opcional, para que se vea mejor)
+st.set_page_config(page_title="Durability Platform", layout="wide")
+
+# --- FUNCIÓN PARA PROCESAR LA IMAGEN ---
+def get_base64(bin_file):
+    try:
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except FileNotFoundError:
+        return None
+
+# Intentamos obtener el código de la imagen 'captra.png'
+img_base64 = get_base64("captra.png")
+
+# --- BLOQUE DE ENCABEZADO (BANNER ARTÍSTICO) ---
+if img_base64:
     st.markdown(
         f"""
         <style>
         .header-container {{
-            background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), url("data:image/png;base64,{img_base64}");
+            background-image: linear-gradient(rgba(255,255,255,0.2), rgba(255,255,255,0.2)), 
+                              url("data:image/png;base64,{img_base64}");
             background-size: cover;
-            background-position: center;
-            padding: 70px 20px;
+            background-position: bottom center; /* Prioriza la parte inferior de la acuarela */
+            padding: 80px 20px 150px 20px;     /* Mucho espacio abajo para que se vea la pintura */
             border-radius: 15px;
             text-align: center;
-            margin-bottom: 30px;
-            border: 1px solid #ddd;
+            margin-bottom: 40px;
+            border: 1px solid #eeeeee;
         }}
         .title-text {{
             color: #1a1a1a;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            font-size: 35px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(255,255,255,0.8);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 42px;
+            font-weight: 800;
+            text-shadow: 2px 2px 10px rgba(255,255,255,1); /* Sombra para que se lea sobre la imagen */
             margin: 0;
+            letter-spacing: -1px;
         }}
         </style>
         
@@ -63,10 +89,12 @@ try:
         """,
         unsafe_allow_html=True
     )
-except FileNotFoundError:
-    # Si la imagen no está, mostramos el título normal para que no de error
-    st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
-    st.warning("No se encontró el archivo 'captra.png'. Colócalo en la carpeta del proyecto.")
+else:
+    # Si no encuentra la imagen, pone el título sencillo para no interrumpir el flujo
+    st.title("Durability and residual capacity platform")
+    st.warning("⚠️ Imagen 'captra.png' no encontrada. Asegúrate de que esté en la misma carpeta que este script.")
+
+##
 
 head_col1, head_col2, head_col3, head_col4 = st.columns([1, 1, 1, 1])
 
