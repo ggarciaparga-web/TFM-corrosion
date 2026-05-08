@@ -244,7 +244,7 @@ with tab_mc:
     # --- BLOQUE 3: CÁLCULOS Y GRÁFICAS ---
     # --- EJECUCIÓN DE CÁLCULOS (Modelcode.py) ---
     # Llamamos a calc_mc que importaste como 'from calculos import Modelcode as calc_mc'
-    t_v, px_v, phi_v, mu_std, mu_cons = calc_mc.calcular_capacidad_residual(
+    t_mc, px_mc, phi_inf_mc, mu_std_mc, mu_cons_mc = calc_mc.calcular_capacidad_residual(
         t_global=t_global,
         b_val=b_val,
         h_val=h_val,
@@ -277,31 +277,66 @@ with tab_mc:
     )
 
     # Visualización de resultados
-    # --- GRÁFICA COMPARATIVA ---
-    st.subheader("Comparison of Residual Capacity Models")
+    # --- VISUALIZACIÓN DE RESULTADOS ---
+    st.subheader("Residual Flexural Capacity Comparison")
     col_graph, col_table = st.columns([2, 1])
 
     with col_graph:
         fig_res = go.Figure()
 
-        # 1. Contevect (Verde)
-        fig_res.add_trace(go.Scatter(x=t_v_cv, y=mu_v_cv, name="Contevect Model", line=dict(color="#228B22", width=3)))
+        # Graficamos Contevect (Línea Verde Gruesa)
+        fig_res.add_trace(go.Scatter(
+            x=t_cv, y=mu_cv, 
+            name="Contevect Model", 
+            line=dict(color="#228B22", width=4)
+        ))
 
-        # 2. Model Code Standard (Azul) - Usando mu_std_mc del return
-        fig_res.add_trace(go.Scatter(x=t_v_mc, y=mu_std_mc, name="MC Standard", line=dict(color="#1f77b4", width=2, dash="dash")))
+        # Graficamos Model Code Standard (Línea Azul Discontinua)
+        fig_res.add_trace(go.Scatter(
+            x=t_mc, y=mu_std_mc, 
+            name="MC Standard", 
+            line=dict(color="#1f77b4", width=2, dash="dash")
+        ))
 
-        # 3. Model Code Conservative (Rojo) - Usando mu_cons_mc del return
-        fig_res.add_trace(go.Scatter(x=t_v_mc, y=mu_cons_mc, name="MC Conservative", line=dict(color="#d62728", width=2, dash="dot")))
+        # Graficamos Model Code Conservative (Línea Roja Punteada)
+        fig_res.add_trace(go.Scatter(
+            x=t_mc, y=mu_cons_mc, 
+            name="MC Conservative", 
+            line=dict(color="#d62728", width=2, dash="dot")
+        ))
 
-        # 4. Diamantes de Eventos Críticos (Contevect)
-        fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"], mode='markers', name='Critical Events', marker=dict(color='FireBrick', size=10, symbol='diamond')))
+        # Añadimos los diamantes del Contevect
+        fig_res.add_trace(go.Scatter(
+            x=df_criticos["Tiempo"], y=df_criticos["Mu"], 
+            mode='markers',
+            name='Critical Events (CV)', 
+            marker=dict(color='FireBrick', size=10, symbol='diamond'),
+            hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"
+        ))
 
-        fig_res.update_layout(xaxis_title="Time [years]", yaxis_title="Moment Capacity [kNm]", hovermode="x unified", template="plotly_white")
+        fig_res.update_layout(
+            xaxis_title="Time [years]", 
+            yaxis_title="Moment Capacity [kNm]", 
+            hovermode="x unified", 
+            template="plotly_white", 
+            height=450,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        
+        # Línea de tiempo de iniciación para referencia
+        fig_res.add_vline(x=t_ini_session, line_dash="dash", line_color="orange", opacity=0.5)
+
         st.plotly_chart(fig_res, use_container_width=True)
 
     with col_table:
-        st.write("**Contevect Events**")
-        st.dataframe(df_criticos[["Tiempo", "Px", "Mu"]], hide_index=True)
-
-    
-  
+        st.write("**Key Degradation Steps (Contevect)**")
+        st.dataframe(
+            df_criticos[["Tiempo", "Px", "Mu"]],
+            column_config={
+                "Tiempo": st.column_config.NumberColumn("Time [y]", format="%.1f"),
+                "Px": st.column_config.NumberColumn("Corr. [mm]", format="%.3f"),
+                "Mu": st.column_config.NumberColumn("Mu [kNm]", format="%.2f")
+            },
+            hide_index=True, 
+            use_container_width=True
+        )
