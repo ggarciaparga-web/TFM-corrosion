@@ -41,10 +41,14 @@ tab_ini, tab_mc, tab_pret = st.tabs(["Initation period", "Residual strength", "P
 # ==========================================
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
 # ==========================================
+# ==========================================
+# PESTAÑA 1: TIEMPO DE INICIACIÓN
+# ==========================================
 with tab_ini:
     attack_type = st.radio("Select analysis phenomenon:", ["Carbonation", "Chlorides"], horizontal=True)
     st.session_state['attack_type'] = attack_type
 
+    # Definición de Alpha según tipo de ataque
     if attack_type == "Carbonation":
         st.session_state['alpha'] = 2.0
     else:
@@ -73,9 +77,11 @@ with tab_ini:
             with ca2: fe = st.number_input("$f_{e}$ [-]", value=5.0)
             with ca3: bw_ini = st.number_input("$b_{w}$ [-]", value=0.446)
             with ca4: t0_ini = st.number_input("$t_{0}$ [-]", value=0.0767)
+        
         t_i, w_i, y_vals, t_ini_calc = calc_ini.calcular_carbonatacion(d_mm, rh_real, hre, ge, fe, kcd, kt, csd, racc, psr, rain_days, bw_ini, t0_ini, t_global)
         y_label, limit_val = "Carbonation Depth [mm]", d_mm
-    else:
+
+    else:  # CHLORIDES
         with c2: 
             c0 = st.number_input("$C_{0}$ [%]", value=0.1)
             cs = st.number_input("$C_{s}$ [%]", value=4.0)
@@ -92,21 +98,76 @@ with tab_ini:
         t_i, dapp, z, y_vals, t_ini_calc = calc_ini.calcular_cloruros(d_mm, c0, cs, ccrit, b_cl, tref, treal, ke, t0_cl, a_age, dcrm, t_global)
         y_label, limit_val = "Concentration [%]", ccrit
 
+    # Guardar resultado en sesión
     st.session_state['t_ini_res'] = t_ini_calc if t_ini_calc is not None else 0.0
 
     st.divider()
-    res1, res2 = st.columns([1, 2.5])
-    with res1:
-        if t_ini_calc and t_ini_calc > 0: st.metric("Initiation Time", f"{t_ini_calc:.2f} years")
-        else: st.warning("No initiation detected")
-    with res2:
+
+    # --- SECCIÓN DE RESULTADOS EN TRES COLUMNAS ---
+    res_metrica, res_tuutti, res_progreso = st.columns([0.8, 2, 2])
+
+    with res_metrica:
+        if t_ini_calc and t_ini_calc > 0: 
+            st.metric("Initiation Time", f"{t_ini_calc:.2f} years")
+        else: 
+            st.warning("No initiation detected")
+
+    # Gráfica del Modelo de Tuutti (Penetración Px)
+    with res_tuutti:
+        if t_i is not None:
+            # Cálculo de Px: 0 hasta t_ini, luego lineal
+            # Px = 0.0116 * Icorr * (t - t_ini)
+            t_ini_eff = st.session_state['t_ini_res']
+            tiempos_propagacion = np.maximum(0, t_i - t_ini_eff)
+            px_vals = 0.0116 * icorr_val * tiempos_propagacion
+
+            fig_tuutti = go.Figure()
+            fig_tuutti.add_trace(go.Scatter(
+                x=t_i, y=px_vals, 
+                line=dict(color='#228B22', width=3), 
+                name="Penetration $P_x$"
+            ))
+            
+            # Sombreado opcional para identificar zona de propagación
+            fig_tuutti.add_vrect(
+                x0=t_ini_eff, x1=max(t_i),
+                fillcolor="red", opacity=0.1, layer="below", line_width=0,
+                annotation_text="Propagation Stage", annotation_position="top left"
+            )
+
+            fig_tuutti.update_layout(
+                title="Tuutti's Model ($P_x$)",
+                height=280, 
+                plot_bgcolor='white', 
+                xaxis_title="Time [years]", 
+                yaxis_title="$P_x$ [mm]",
+                margin=dict(l=0, r=0, t=40, b=0)
+            )
+            st.plotly_chart(fig_tuutti, use_container_width=True)
+
+    # Gráfica de Progreso de Iniciación (La original)
+    with res_progreso:
         if t_i is not None:
             fig_ini = go.Figure()
-            fig_ini.add_trace(go.Scatter(x=t_i, y=y_vals, fill='tozeroy', line=dict(color='#e17000', width=3), name="Progress"))
-            fig_ini.add_trace(go.Scatter(x=t_i, y=[limit_val]*len(t_i), line=dict(color='black', dash='dash'), name="Limit"))
-            fig_ini.update_layout(height=280, plot_bgcolor='white', xaxis_title="Time [years]", yaxis_title=y_label, margin=dict(l=0, r=0, t=10, b=0))
+            fig_ini.add_trace(go.Scatter(
+                x=t_i, y=y_vals, fill='tozeroy', 
+                line=dict(color='#e17000', width=3), 
+                name="Progress"
+            ))
+            fig_ini.add_trace(go.Scatter(
+                x=t_i, y=[limit_val]*len(t_i), 
+                line=dict(color='black', dash='dash'), 
+                name="Limit"
+            ))
+            fig_ini.update_layout(
+                title="Initiation Progress",
+                height=280, 
+                plot_bgcolor='white', 
+                xaxis_title="Time [years]", 
+                yaxis_title=y_label, 
+                margin=dict(l=0, r=0, t=40, b=0)
+            )
             st.plotly_chart(fig_ini, use_container_width=True)
-
 # ==========================================
 # PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
