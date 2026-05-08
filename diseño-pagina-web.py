@@ -217,7 +217,7 @@ with tab_pret:
         if np_p > 0:
             spacing_p = (b_p - 2*ri_p) / (np_p - 1) if np_p > 1 else 0
             x_p = ri_p if np_p > 1 else b_p/2
-            for i in range(np_p): fig_sec_p.add_trace(go.Scatter(x=[x_p + i*spacing_p], y=[y_pretensado], mode='markers', marker=dict(size=phi_p_val*1.1, color="#FFFF00", symbol="diamond"), showlegend=False))
+            for i in range(np_p): fig_sec_p.add_trace(go.Scatter(x=[x_p + i*spacing_p], y=[y_pretensado], mode='markers', marker=dict(size=phi_p_val*1.1, color="#FFFF00"), showlegend=False))
         fig_sec_p.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1), height=180, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_sec_p, use_container_width=True)
 
