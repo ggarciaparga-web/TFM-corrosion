@@ -128,19 +128,14 @@ with tab_ini:
                 name="Penetration $P_x$"
             ))
             
-            # Sombreado opcional para identificar zona de propagación
-            fig_tuutti.add_vrect(
-                x0=t_ini_eff, x1=max(t_i),
-                fillcolor="red", opacity=0.1, layer="below", line_width=0,
-                annotation_text="Propagation Stage", annotation_position="top left"
-            )
-
+            
+            
             fig_tuutti.update_layout(
-                title="Tuutti's Model ($P_x$)",
+                title="Tuutti's Model (P<sub>x</sub>)",
                 height=280, 
                 plot_bgcolor='white', 
                 xaxis_title="Time [years]", 
-                yaxis_title="$P_x$ [mm]",
+                yaxis_title="P<sub>x</sub>)[mm]",
                 margin=dict(l=0, r=0, t=40, b=0)
             )
             st.plotly_chart(fig_tuutti, use_container_width=True)
