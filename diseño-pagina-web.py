@@ -324,7 +324,7 @@ with tab_pret:
         nt_p = st.number_input("$n_{top}$", value=n_sup, key="nt_p3")
         pt_p = st.number_input("$\Phi_{top}$", value=p_sup, key="pt_p3")
     with c4:
-        np_p = st.number_input("$n_{bot}$ (Torones)", value=2, key="np_p3")
+        np_p = st.number_input("$n_{bot}$", value=2, key="np_p3")
         phi_p_val = st.number_input("$\Phi_{p}$ [mm]", value=14.0, key="phip_p3")
     with c5:
         ae_p3_val = st.number_input("$A_e$ [mm]", value=92.0, key="ae_p3_key")
