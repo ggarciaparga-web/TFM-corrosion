@@ -224,12 +224,61 @@ with tab_mc:
     st.divider()
     
     # --- EJECUCIÓN DE CÁLCULOS ---
-# --- EJECUCIÓN DE CÁLCULOS (Dentro de tab_mc) ---
+    # ==========================================
+# PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
+# ==========================================
+with tab_mc:
+    # 1. Recuperamos valores globales y de la Tab 1
+    t_ini_session = st.session_state.get('t_ini_res', 0.0)
+    current_alpha = st.session_state.get('alpha', 2.0)
+    atk_type = st.session_state.get('attack_type', "Carbonation")
     
-    # 1. Llamada a la función desde el módulo Contevect (calc_cv)
-    # Usamos los nombres de variables definidos en tus inputs superiores
-    t_vector, df_eventos, mu_vector = calc_cv.calcular_contevect(
-        t_ana=t_global,          # Horizonte de tiempo definido en el header
+    st.caption(f"**Initiation:** {t_ini_session:.2f} yrs | **Type:** {atk_type} | **Alpha:** {current_alpha}")
+
+    # --- ENTRADA DE DATOS GEOMÉTRICOS ---
+    c1, c2, c3, c4, c5, c_viz = st.columns([1, 1, 1, 1, 1, 2])
+
+    with c1:
+        h_val = st.number_input("$h$ [mm]", value=300, key="h_mc")
+        b_val = st.number_input("$b$ [mm]", value=150, key="b_mc")
+    
+    with c2:
+        rec_sup = st.number_input("$c_{top}$ [mm]", value=20, key="rs_mc")
+        rec_inf = st.number_input("$c_{bot}$ [mm]", value=20, key="ri_mc")
+        
+    with c3:
+        n_sup = st.number_input("$n_{top}$", value=2, min_value=0, key="ns_mc")
+        p_sup = st.number_input("$\Phi_{top}$", value=10, key="ps_mc")
+
+    with c4:
+        n_inf = st.number_input("$n_{bot}$", value=2, min_value=0, key="ni_mc")
+        phi_inf_0 = st.number_input("$\Phi_{bot}$", value=16, key="pi_mc")
+
+    with c5:
+        fyk = st.number_input("$f_{yk}$", value=500, key="fyk_mc")
+        fck_val = st.number_input("$f_{ck}$ [MPa]", value=25, key="fck_mc")
+
+    # --- DIBUJO DE LA SECCIÓN ---
+    with c_viz:
+        fig_sec = go.Figure()
+        fig_sec.add_shape(type="rect", x0=0, y0=0, x1=b_val, y1=h_val,
+                          line=dict(color="Black", width=2), fillcolor="LightGrey", opacity=0.3)
+        if n_inf > 0:
+            spacing_i = (b_val - 2*rec_inf) / (n_inf - 1) if n_inf > 1 else 0
+            x_i = rec_inf if n_inf > 1 else b_val/2
+            for i in range(n_inf):
+                fig_sec.add_trace(go.Scatter(x=[x_i + i*spacing_i], y=[rec_inf],
+                    mode='markers', marker=dict(size=phi_inf_0*0.8, color="#228B22"), showlegend=False))
+        fig_sec.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
+                              height=180, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_sec, use_container_width=True)
+
+    st.divider()
+    
+    # --- EJECUCIÓN DE CÁLCULOS ---
+    # Llamamos a la función del archivo Contevect.py (asegúrate de que los nombres coincidan)
+    t_v, df_criticos, mu_v = calc_cv.calcular_contevect(
+        t_ana=t_global,
         b_val=b_val,
         h_val=h_val,
         rec_sup=rec_sup,
@@ -238,63 +287,30 @@ with tab_mc:
         phi_inf_0=phi_inf_0,
         fyk=fyk,
         fck_val=fck_val,
-        i_corr=icorr_val,        # Icorr definido en el header
-        alpha=current_alpha,      # Alpha definido por el tipo de ataque en Tab 1
-        t_ini=t_ini              # Tiempo de iniciación calculado en Tab 1
+        i_corr=icorr_val,
+        alpha=current_alpha,
+        t_ini=t_ini_session
     )
 
-    # 2. Layout de resultados (Gráfica y Tabla)
-    col_graph, col_table = st.columns([2, 1])
+    # --- GRÁFICA Y TABLA DE RESULTADOS ---
+    st.subheader("Residual Flexural Capacity (Contevect Model)")
+    col_g, col_t = st.columns([2, 1])
 
-    with col_graph:
-        st.subheader("Bending Capacity Evolution")
-        fig_mu = go.Figure()
+    with col_g:
+        fig_res = go.Figure()
+        fig_res.add_trace(go.Scatter(x=t_v, y=mu_v, name="Moment Capacity", line=dict(color="#228B22", width=3)))
+        fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"], mode='markers',
+                                     name='Critical Events', marker=dict(color='FireBrick', size=10, symbol='diamond'),
+                                     hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"))
+        fig_res.update_layout(xaxis_title="Time [years]", yaxis_title="Moment Capacity [kNm]", 
+                              hovermode="x unified", template="plotly_white", height=400)
+        st.plotly_chart(fig_res, use_container_width=True)
 
-        # Línea de capacidad residual
-        fig_mu.add_trace(go.Scatter(
-            x=t_vector, 
-            y=mu_vector,
-            mode='lines',
-            name='Ultimate Moment $M_u(t)$',
-            line=dict(color='#228B22', width=3)
-        ))
-
-        # Puntos críticos (Eventos de la tabla df_eventos)
-        fig_mu.add_trace(go.Scatter(
-            x=df_eventos["Tiempo"],
-            y=df_eventos["Mu"],
-            mode='markers',
-            name='Critical Events',
-            marker=dict(color='FireBrick', size=10, symbol='diamond'),
-            hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"
-        ))
-
-        fig_mu.update_layout(
-            xaxis_title="Time [years]",
-            yaxis_title="Moment Capacity [kN·m]",
-            hovermode="x unified",
-            height=400,
-            template="plotly_white",
-            margin=dict(l=0, r=0, t=30, b=0),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-        st.plotly_chart(fig_mu, use_container_width=True)
-
-    with col_table:
-        st.subheader("Key Degradation Steps")
-        # Formateamos la tabla para que sea más legible
-        st.dataframe(
-            df_eventos[["Tiempo", "Px", "A1", "Mu"]],
-            column_config={
-                "Tiempo": st.column_config.NumberColumn("Time [y]", format="%.1f"),
-                "Px": st.column_config.NumberColumn("Penetration [mm]", format="%.3f"),
-                "A1": st.column_config.NumberColumn("Area [mm²]", format="%.1f"),
-                "Mu": st.column_config.NumberColumn("Mu [kNm]", format="%.2f"),
-            },
-            hide_index=True,
-            use_container_width=True
-        )
-   
+    with col_t:
+        st.write("**Key Degradation Steps**")
+        st.dataframe(df_criticos[["Tiempo", "Px", "Mu"]],
+                     column_config={"Tiempo": "Time [y]", "Px": "Corr. [mm]", "Mu": "Mu [kNm]"},
+                     hide_index=True, use_container_width=True)
 
 
 # ==========================================
