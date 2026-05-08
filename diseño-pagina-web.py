@@ -84,7 +84,7 @@ with tab_ini:
             treal = st.number_input("$T_{real}$ [K]", value=289.6)
         with c4: 
             tref = st.number_input("$T_{ref}$ [K]", value=293.0)
-            dcrm = st.number_input("$D_{app}*10^-12$ [$m^2/s$]", value=1.95, format="%.2e")
+            dcrm = st.number_input("$D_{app} 10**-12$ [$m^2/s$]", value=1.95, format="%.2e")
         with c5:
             a_age = st.number_input("$a$ (ageing) [-]", value=0.4902)
             b_cl = st.number_input("$b_{cl}$ [K]", value=4800.0)
