@@ -417,5 +417,78 @@ with tab_pret:
         st.plotly_chart(fig_sec_p, use_container_width=True)
 
     st.divider()
+# --- EJECUCIÓN DE CÁLCULOS DE TENSIONES ---
+    
+    # 1. Definimos el diccionario de parámetros exacto que pide tu función
+    params_p3 = {
+        't_global': t_global,       # Del header
+        't_ini': t_ini_session,     # De la Tab 1
+        'h': h_p,                   # Input de esta Tab
+        'bw': b_p,                  # Input de esta Tab
+        'phi_p0': phi_p_val,        # Input de esta Tab (phi_p)
+        'n_p': np_p,                # Input de esta Tab (n_bot)
+        'fpy': fpy_p3_val,          # Input de esta Tab
+        'Ae': ae_p3_val,            # Input de esta Tab
+        'icorr': icorr_val,         # Del header
+        'alpha': current_alpha      # De la Tab 1
+    }
+
+    # 2. Llamada a la función (asumiendo que calc_pre es el alias de pretensado.py)
+    res_tensiones = calc_pre.calcular_tensiones_pretensado(params_p3)
+    
+    # 3. Convertimos a DataFrame para graficar
+    df_t = pd.DataFrame(res_tensiones)
+
+    # --- VISUALIZACIÓN ---
+    st.subheader("Concrete Stresses Evolution (Prestressing Effect)")
+    
+    fig_stresses = go.Figure()
+
+    # Tensión Fibra Inferior (Verde)
+    fig_stresses.add_trace(go.Scatter(
+        x=df_t['t'], 
+        y=df_t['sigma_inferior'], 
+        name="$\sigma$ Bottom (comp/tens)", 
+        line=dict(color='#228B22', width=3)
+    ))
+
+    # Tensión Fibra Superior (Rojo)
+    fig_stresses.add_trace(go.Scatter(
+        x=df_t['t'], 
+        y=df_t['sigma_superior'], 
+        name="$\sigma$ Top", 
+        line=dict(color='#A60628', width=3)
+    ))
+
+    # Línea vertical de Tiempo de Iniciación (Amarillo/Naranja para visibilidad)
+    # Usamos el amarillo que preguntaste (#FFFF00) o un amarillo oro (#FFD700)
+    fig_stresses.add_vline(
+        x=t_ini_session, 
+        line_dash="dash", 
+        line_color="#FFD700", 
+        annotation_text="Corrosion Start",
+        annotation_position="top left"
+    )
+
+    fig_stresses.update_layout(
+        xaxis_title="Time [years]",
+        yaxis_title="Stress [MPa]",
+        hovermode="x unified",
+        template="plotly_white",
+        height=450,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+
+    st.plotly_chart(fig_stresses, use_container_width=True)
+
+    # Opcional: Mostrar tabla de valores críticos
+    with st.expander("View detailed stress data"):
+        st.dataframe(df_t.style.format({
+            "t": "{:d}",
+            "px": "{:.4f}",
+            "mcorr": "{:.2%}",
+            "sigma_inferior": "{:.2f}",
+            "sigma_superior": "{:.2f}"
+        }))
 
     
