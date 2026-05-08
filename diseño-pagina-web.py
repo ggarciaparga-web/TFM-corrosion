@@ -471,7 +471,6 @@ with tab_pret:
         template="plotly_white",
         height=450,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        include_mathjax='cdn' # Esto carga la librería necesaria para ver símbolos griegos
     )
     
 
