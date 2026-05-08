@@ -25,21 +25,6 @@ st.markdown("""
 # --- HEADER ---
 #st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
 # --- BLOQUE PARA EL BANNER CON ACUARELA ---
-
-
-Python
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-import base64
-from calculos import tiempoiniciacion as calc_ini
-from calculos import Modelcode as calc_mc
-from calculos import Contevect as calc_cv
-from calculos import Cortante as calc_cor  
-from calculos import pretensado as calc_pre
-
-# Configuración de la página (opcional, para que se vea mejor)
 st.set_page_config(page_title="Durability Platform", layout="wide")
 
 # --- FUNCIÓN PARA PROCESAR LA IMAGEN ---
