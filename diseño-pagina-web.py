@@ -275,42 +275,7 @@ with tab_mc:
 
     st.divider()
     
-    # --- EJECUCIÓN DE CÁLCULOS ---
-    # Llamamos a la función del archivo Contevect.py (asegúrate de que los nombres coincidan)
-    t_v, df_criticos, mu_v = calc_cv.calcular_contevect(
-        t_ana=t_global,
-        b_val=b_val,
-        h_val=h_val,
-        rec_sup=rec_sup,
-        rec_inf=rec_inf,
-        n_inf=n_inf,
-        phi_inf_0=phi_inf_0,
-        fyk=fyk,
-        fck_val=fck_val,
-        i_corr=icorr_val,
-        alpha=current_alpha,
-        t_ini=t_ini_session
-    )
-
-    # --- GRÁFICA Y TABLA DE RESULTADOS ---
-    st.subheader("Residual Flexural Capacity (Contevect Model)")
-    col_g, col_t = st.columns([2, 1])
-
-    with col_g:
-        fig_res = go.Figure()
-        fig_res.add_trace(go.Scatter(x=t_v, y=mu_v, name="Moment Capacity", line=dict(color="#228B22", width=3)))
-        fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"], mode='markers',
-                                     name='Critical Events', marker=dict(color='FireBrick', size=10, symbol='diamond'),
-                                     hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"))
-        fig_res.update_layout(xaxis_title="Time [years]", yaxis_title="Moment Capacity [kNm]", 
-                              hovermode="x unified", template="plotly_white", height=400)
-        st.plotly_chart(fig_res, use_container_width=True)
-
-    with col_t:
-        st.write("**Key Degradation Steps**")
-        st.dataframe(df_criticos[["Tiempo", "Px", "Mu"]],
-                     column_config={"Tiempo": "Time [y]", "Px": "Corr. [mm]", "Mu": "Mu [kNm]"},
-                     hide_index=True, use_container_width=True)
+ 
 
 
 # ==========================================
