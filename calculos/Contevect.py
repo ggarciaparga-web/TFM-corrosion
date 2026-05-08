@@ -8,11 +8,11 @@ def calcular_mu_simple(a1, b_act, d_act, fyd_val, fck_val):
     mu = (a1 * fyd_val * z) / 1e6
     return max(mu, 0.0)
 
-def calcular_contevect(t_ana, b_init, h, rec_sup, rec_inf, n_inf, phi_inf_0, 
-                       fyk, fck, i_corr, alpha, t_ini):
+def calcular_contevect(t_ana, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0, 
+                       fyk, fck_val, i_corr, alpha, t_ini):
     
     # Parámetros base
-    fyd = fyk / 1.15
+    fyd = fyk_val / 1.15
     fci = 0.333 * fck**(2/3)
     d_init = h - rec_inf - (phi_inf_0 / 2)
     phi_w0 = 0.0001 
@@ -32,7 +32,7 @@ def calcular_contevect(t_ana, b_init, h, rec_sup, rec_inf, n_inf, phi_inf_0,
         
         rows.append({
             "Tiempo": t, "Px": px, "A1": a1, "Aw": aw,
-            "rho1": a1 / (b_init * d_init),
+            "rho1": a1 / (b_val * d_init),
             "rho2": 0.001 
         })
     
@@ -48,7 +48,7 @@ def calcular_contevect(t_ana, b_init, h, rec_sup, rec_inf, n_inf, phi_inf_0,
     # Este punto debe ser el primero de la lista para que la interpolación sea constante antes
     p_ini = {
         "Tiempo": t_ini, "Px": 0.0, "A1": a_init, "Aw": (np.pi * phi_w0**2 / 4.0),
-        "b": b_init, "d": d_init
+        "b": b_val, "d": d_init
     }
     points.append(p_ini)
 
@@ -63,7 +63,7 @@ def calcular_contevect(t_ana, b_init, h, rec_sup, rec_inf, n_inf, phi_inf_0,
     for _, row in df_base.iterrows():
         r1, r2, px, aw = row["rho1"]*100, row["rho2"]*100, row["Px"], row["Aw"]
         
-        if r1 > 1.5 and aw > (0.0036 * b_init) and px > 0.2 and ev4 is None:
+        if r1 > 1.5 and aw > (0.0036 * b_val) and px > 0.2 and ev4 is None:
             ev4 = row.copy()
             ev4["b"], ev4["d"] = b_init - 2.0 * rec_inf, d_init - rec_inf
             
