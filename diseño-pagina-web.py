@@ -159,83 +159,18 @@ with tab_ini:
 # ==========================================
 # TAB: MECHANICAL CAPACITY
 # ==========================================
-with tab_mc:
-    t_ini = st.session_state.get('t_ini_res', 0.0)
-    atk_type = st.session_state.get('tipo_ataque', "Carbonation")
-    current_alpha = st.session_state.get('alpha', 2.0)
-    st.caption(f"**Initiation:** {t_ini:.2f} yrs | **Type:** {atk_type}")
-
-    # Using 6 columns to fit inputs and the drawing in one single row
-    c1, c2, c3, c4, c5, c_viz = st.columns([1, 1, 1, 1, 1, 2])
-
-    with c1:
-        h_val = st.number_input("$h$ [mm]", value=300, key="h_mc")
-        b_val = st.number_input("$b$ [mm]", value=150, key="b_mc")
-    
-    with c2:
-        rec_sup = st.number_input("$c_{top}$ [mm]", value=20)
-        rec_inf = st.number_input("$c_{bot}$ [mm]", value=20)
-        
-    with c3:
-        n_sup = st.number_input("$n_{top}$", value=2, min_value=0)
-        p_sup = st.number_input("$\Phi_{top}$", value=10)
-        #icorr = st.number_input("$I_{corr}$", value=0.5, step=0.1)
-
-    with c4:
-        n_inf = st.number_input("$n_{bot}$", value=2, min_value=0)
-        phi_inf_0 = st.number_input("$\Phi_{bot}$", value=16)
-
-    with c5:
-        fyk = st.number_input("$f_{yk}$", value=500)
-        fck_val = st.number_input("$f_{ck}$ [MPa]", value=25)
-
-    # Drawing the section in the last column
-    with c_viz:
-        fig_sec = go.Figure()
-
-        # Concrete Rect
-        fig_sec.add_shape(type="rect", x0=0, y0=0, x1=b_val, y1=h_val,
-                          line=dict(color="Black", width=2), fillcolor="LightGrey", opacity=0.3)
-
-        # Top Bars (Red)
-        if n_sup > 0:
-            spacing_s = (b_val - 2*rec_sup) / (n_sup - 1) if n_sup > 1 else 0
-            x_s = rec_sup if n_sup > 1 else b_val/2
-            for i in range(n_sup):
-                fig_sec.add_trace(go.Scatter(x=[x_s + i*spacing_s], y=[h_val - rec_sup],
-                    mode='markers', marker=dict(size=p_sup*0.8, color="#FF0000"), showlegend=False))
-
-        # Bottom Bars (Blue)
-        if n_inf > 0:
-            spacing_i = (b_val - 2*rec_inf) / (n_inf - 1) if n_inf > 1 else 0
-            x_i = rec_inf if n_inf > 1 else b_val/2
-            for i in range(n_inf):
-                fig_sec.add_trace(go.Scatter(x=[x_i + i*spacing_i], y=[rec_inf],
-                    mode='markers', marker=dict(size=phi_inf_0*0.8, color="#228B22"), showlegend=False))
-
-        fig_sec.update_layout(
-            xaxis=dict(visible=False),
-            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
-            height=180, margin=dict(l=5, r=5, t=5, b=5),
-            plot_bgcolor='rgba(0,0,0,0)'
-        )
-        st.plotly_chart(fig_sec, use_container_width=True)
-
-    st.divider()
-    
-    # --- EJECUCIÓN DE CÁLCULOS ---
-    # ==========================================
+# ==========================================
 # PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
 with tab_mc:
-    # 1. Recuperamos valores globales y de la Tab 1
+    # 1. Recuperamos valores de sesión (Tab 1) y Header
     t_ini_session = st.session_state.get('t_ini_res', 0.0)
     current_alpha = st.session_state.get('alpha', 2.0)
     atk_type = st.session_state.get('attack_type', "Carbonation")
     
     st.caption(f"**Initiation:** {t_ini_session:.2f} yrs | **Type:** {atk_type} | **Alpha:** {current_alpha}")
 
-    # --- ENTRADA DE DATOS GEOMÉTRICOS ---
+    # --- BLOQUE 1: ENTRADA DE DATOS (Columnas compactas) ---
     c1, c2, c3, c4, c5, c_viz = st.columns([1, 1, 1, 1, 1, 2])
 
     with c1:
@@ -258,25 +193,62 @@ with tab_mc:
         fyk = st.number_input("$f_{yk}$", value=500, key="fyk_mc")
         fck_val = st.number_input("$f_{ck}$ [MPa]", value=25, key="fck_mc")
 
-    # --- DIBUJO DE LA SECCIÓN ---
+    # --- BLOQUE 2: DIBUJO DE LA SECCIÓN (Visualización) ---
     with c_viz:
         fig_sec = go.Figure()
+        # Rectángulo de hormigón
         fig_sec.add_shape(type="rect", x0=0, y0=0, x1=b_val, y1=h_val,
                           line=dict(color="Black", width=2), fillcolor="LightGrey", opacity=0.3)
+        # Armadura inferior (Verde)
         if n_inf > 0:
             spacing_i = (b_val - 2*rec_inf) / (n_inf - 1) if n_inf > 1 else 0
             x_i = rec_inf if n_inf > 1 else b_val/2
             for i in range(n_inf):
                 fig_sec.add_trace(go.Scatter(x=[x_i + i*spacing_i], y=[rec_inf],
                     mode='markers', marker=dict(size=phi_inf_0*0.8, color="#228B22"), showlegend=False))
+        
         fig_sec.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
                               height=180, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_sec, use_container_width=True)
 
     st.divider()
     
- 
+    # --- BLOQUE 3: CÁLCULOS Y GRÁFICAS ---
+    # Llamada a la función del modelo Contevect
+    t_v, df_criticos, mu_v = calc_cv.calcular_contevect(
+        t_ana=t_global,
+        b_val=b_val,
+        h_val=h_val,
+        rec_sup=rec_sup,
+        rec_inf=rec_inf,
+        n_inf=n_inf,
+        phi_inf_0=phi_inf_0,
+        fyk=fyk,
+        fck_val=fck_val,
+        i_corr=icorr_val,
+        alpha=current_alpha,
+        t_ini=t_ini_session
+    )
 
+    # Visualización de resultados
+    st.subheader("Residual Flexural Capacity (Contevect Model)")
+    col_graph, col_table = st.columns([2, 1])
 
+    with col_graph:
+        fig_res = go.Figure()
+        # Línea de capacidad
+        fig_res.add_trace(go.Scatter(x=t_v, y=mu_v, name="Moment Capacity", line=dict(color="#228B22", width=3)))
+        # Puntos críticos (diamantes rojos)
+        fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"], mode='markers',
+                                     name='Critical Events', marker=dict(color='FireBrick', size=10, symbol='diamond'),
+                                     hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"))
+        
+        fig_res.update_layout(xaxis_title="Time [years]", yaxis_title="Moment Capacity [kNm]", 
+                              hovermode="x unified", template="plotly_white", height=400)
+        st.plotly_chart(fig_res, use_container_width=True)
 
-   
+    with col_table:
+        st.write("**Key Degradation Steps**")
+        st.dataframe(df_criticos[["Tiempo", "Px", "Mu"]],
+                     column_config={"Tiempo": "Time [y]", "Px": "Corr. [mm]", "Mu": "Mu [kNm]"},
+                     hide_index=True, use_container_width=True)
