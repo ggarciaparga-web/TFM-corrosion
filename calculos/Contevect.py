@@ -12,8 +12,8 @@ def calcular_contevect(t_ana, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0,
                        fyk, fck_val, i_corr, alpha, t_ini):
     
     # Parámetros base
-    fyd = fyk_val / 1.15
-    fci = 0.333 * fck**(2/3)
+    fyd = fyk / 1.15
+    fci = 0.333 * fck_val**(2/3)
     d_init = h - rec_inf - (phi_inf_0 / 2)
     phi_w0 = 0.0001 
     a_init = (np.pi * phi_inf_0**2 / 4.0) * n_inf
@@ -56,7 +56,7 @@ def calcular_contevect(t_ana, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0,
     idx_px0 = (df_base["Px"] >= px0_threshold).idxmax()
     if df_base.loc[idx_px0, "Px"] > 0:
         p1 = df_base.loc[idx_px0].copy()
-        p1["b"], p1["d"] = b_init, d_init
+        p1["b"], p1["d"] = b_val, d_init
         points.append(p1)
 
     ev3, ev4 = None, None
