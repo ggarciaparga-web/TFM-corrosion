@@ -346,11 +346,8 @@ with tab_mc:
 # ==========================================
 # PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
 # ==========================================
-# ==========================================
-# PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
-# ==========================================
 with tab_pret:
-    # 1. Recuperación de variables globales
+    # 1. Recuperación de variables de estado
     t_ini_session = st.session_state.get('t_ini_res', 0.0)
     current_alpha = st.session_state.get('alpha', 2.0)
     atk_type = st.session_state.get('attack_type', "Carbonation")
@@ -377,8 +374,8 @@ with tab_pret:
         phi_p_val = st.number_input("$\Phi_{p}$ [mm]", value=14.0, key="phip_p3")
 
     with c5:
-        ae_p3 = st.number_input("$A_e$ [mm]", value=92.0, key="ae_p3_val")
-        fpy_p3 = st.number_input("$f_{py}$ [MPa]", value=1860, key="fpy_p3_val")
+        ae_p3_val = st.number_input("$A_e$ [mm]", value=92.0, key="ae_p3_key")
+        fpy_p3_val = st.number_input("$f_{py}$ [MPa]", value=1860, key="fpy_p3_key")
 
     with c6:
         fyk_p = st.number_input("$f_{yk}$", value=fyk, key="fyk_p3")
@@ -399,14 +396,14 @@ with tab_pret:
                 fig_sec_p.add_trace(go.Scatter(x=[x_s + i*spacing_s], y=[h_p - rs_p],
                     mode='markers', marker=dict(size=pt_p*0.8, color="#FF0000"), showlegend=False))
 
-        # Pretensado (Diamantes Verdes en posición Ae)
-        y_pretensado = (h_p / 2) - ae_p3
+        # Pretensado (Diamantes Amarillos en posición Ae)
+        y_pretensado = (h_p / 2) - ae_p3_val
         if np_p > 0:
             spacing_p = (b_p - 2*ri_p) / (np_p - 1) if np_p > 1 else 0
             x_p = ri_p if np_p > 1 else b_p/2
             for i in range(np_p):
                 fig_sec_p.add_trace(go.Scatter(x=[x_p + i*spacing_p], y=[y_pretensado],
-                    mode='markers', marker=dict(size=phi_p_val*1.1, color="#FFFF00"), 
+                    mode='markers', marker=dict(size=phi_p_val*1.1, color="#FFFF00", symbol="diamond"), 
                     showlegend=False))
 
         fig_sec_p.update_layout(
@@ -417,29 +414,27 @@ with tab_pret:
         st.plotly_chart(fig_sec_p, use_container_width=True)
 
     st.divider()
-# --- EJECUCIÓN DE CÁLCULOS DE TENSIONES ---
-    
-    # 1. Definimos el diccionario de parámetros exacto que pide tu función
+
+    # --- EJECUCIÓN DE CÁLCULOS DE TENSIONES ---
+    # Diccionario de parámetros para la función calcular_tensiones_pretensado
     params_p3 = {
-        't_global': t_global,       # Del header
-        't_ini': t_ini_session,     # De la Tab 1
-        'h': h_p,                   # Input de esta Tab
-        'bw': b_p,                  # Input de esta Tab
-        'phi_p0': phi_p_val,        # Input de esta Tab (phi_p)
-        'n_p': np_p,                # Input de esta Tab (n_bot)
-        'fpy': fpy_p3_val,          # Input de esta Tab
-        'Ae': ae_p3_val,            # Input de esta Tab
-        'icorr': icorr_val,         # Del header
-        'alpha': current_alpha      # De la Tab 1
+        't_global': t_global,
+        't_ini': t_ini_session,
+        'h': h_p,
+        'bw': b_p,
+        'phi_p0': phi_p_val,
+        'n_p': np_p,
+        'fpy': fpy_p3_val,
+        'Ae': ae_p3_val,
+        'icorr': icorr_val,
+        'alpha': current_alpha
     }
 
-    # 2. Llamada a la función (asumiendo que calc_pre es el alias de pretensado.py)
+    # Llamada a la función externa
     res_tensiones = calc_pre.calcular_tensiones_pretensado(params_p3)
-    
-    # 3. Convertimos a DataFrame para graficar
     df_t = pd.DataFrame(res_tensiones)
 
-    # --- VISUALIZACIÓN ---
+    # --- VISUALIZACIÓN DE TENSIONES ---
     st.subheader("Concrete Stresses Evolution (Prestressing Effect)")
     
     fig_stresses = go.Figure()
@@ -460,8 +455,7 @@ with tab_pret:
         line=dict(color='#A60628', width=3)
     ))
 
-    # Línea vertical de Tiempo de Iniciación (Amarillo/Naranja para visibilidad)
-    # Usamos el amarillo que preguntaste (#FFFF00) o un amarillo oro (#FFD700)
+    # Línea vertical de Tiempo de Iniciación (Amarillo Oro)
     fig_stresses.add_vline(
         x=t_ini_session, 
         line_dash="dash", 
@@ -481,7 +475,7 @@ with tab_pret:
 
     st.plotly_chart(fig_stresses, use_container_width=True)
 
-    # Opcional: Mostrar tabla de valores críticos
+    # Tabla de datos detallados
     with st.expander("View detailed stress data"):
         st.dataframe(df_t.style.format({
             "t": "{:d}",
@@ -490,5 +484,3 @@ with tab_pret:
             "sigma_inferior": "{:.2f}",
             "sigma_superior": "{:.2f}"
         }))
-
-    
