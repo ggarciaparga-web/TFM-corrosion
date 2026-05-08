@@ -397,38 +397,76 @@ with tab_pret:
 
 #llamamos a las funciones
 # --- EJECUCIÓN DE CÁLCULOS ---
+# --- EJECUCIÓN DE CÁLCULOS (Dentro de tab_mc) ---
+    
+    # 1. Recuperamos valores de sesión y header
+    t_ini_session = st.session_state.get('t_ini_res', 0.0)
+    alpha_session = st.session_state.get('alpha', 2.0)
+    
+    # 2. Llamada a la función Contevect (calc_cv)
+    # Importante: Asegúrate de que los argumentos coincidan con tu def calcular_contevect
+    t_v, df_criticos, mu_v = calc_cv.calcular_contevect(
+        t_ana=t_global,          # Del header
+        b_val=b_val,             # Del input c1
+        h_val=h_val,             # Del input c1
+        rec_sup=rec_sup,         # Del input c2
+        rec_inf=rec_inf,         # Del input c2
+        n_inf=n_inf,             # Del input c4
+        phi_inf_0=phi_inf_0,     # Del input c4
+        fyk=fyk,                 # Del input c5
+        fck_val=fck_val,         # Del input c5
+        i_corr=icorr_val,        # Del header
+        alpha=alpha_session,     # De la sesión (Tab 1)
+        t_ini=t_ini_session      # De la sesión (Tab 1)
+    )
 
-# 1. Recuperamos los valores de la sesión para asegurar persistencia
-t_ini_session = st.session_state.get('t_ini_res', 0.0)
-alpha_session = st.session_state.get('alpha', 2.0)
+    # --- VISUALIZACIÓN DE RESULTADOS ---
+    st.subheader("Residual Flexural Capacity (Contevect Model)")
+    
+    col_g, col_t = st.columns([2, 1])
 
-# 2. Llamada a la función (asegúrate de que los nombres coincidan con tus inputs)
-t_v, px_v, phi_i_v, m_res, m_cons = calc_mc.calcular_capacidad_residual(
-    t_global,       # 1. Tiempo global del header
-    b_val,          # 2. Ancho de la sección
-    h_val,          # 3. Canto de la sección
-    rec_sup,        # 4. Recubrimiento superior
-    rec_inf,        # 5. Recubrimiento inferior
-    n_sup,          # 6. Nº barras superiores
-    p_sup,          # 7. Diámetro barras superiores
-    n_inf,          # 8. Nº barras inferiores
-    phi_inf_0,      # 9. Diámetro barras inferiores
-    fyk,            # 10. Límite elástico acero
-    fck_val,        # 11. Resistencia concreto
-    icorr_val,      # 12. Intensidad de corrosión del header
-    alpha_session,  # 13. Alpha (current_alpha en tu función)
-    t_ini_session   # 14. Tiempo de iniciación de la pestaña 1
-)
-#graficamos
-st.subheader("Residual Flexural Capacity")
-fig_res = go.Figure()
+    with col_g:
+        fig_res = go.Figure()
 
-fig_res.add_trace(go.Scatter(x=t_v, y=m_res, name="Model Code Standard", line=dict(color="#228B22", width=3)))
-fig_res.add_trace(go.Scatter(x=t_v, y=m_cons, name="Model Code Conservative", line=dict(color="#FF0000", dash="dash")))
+        # Línea continua de capacidad
+        fig_res.add_trace(go.Scatter(
+            x=t_v, 
+            y=mu_v, 
+            name="Moment Capacity", 
+            line=dict(color="#228B22", width=3)
+        ))
 
-fig_res.update_layout(
-    xaxis_title="Time [years]",
-    yaxis_title="Moment Capacity [kNm]",
-    hovermode="x unified"
-)
-st.plotly_chart(fig_res, use_container_width=True)
+        # Puntos críticos (Eventos de degradación)
+        fig_res.add_trace(go.Scatter(
+            x=df_criticos["Tiempo"],
+            y=df_criticos["Mu"],
+            mode='markers',
+            name='Critical Events',
+            marker=dict(color='FireBrick', size=10, symbol='diamond'),
+            hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"
+        ))
+
+        fig_res.update_layout(
+            xaxis_title="Time [years]",
+            yaxis_title="Moment Capacity [kNm]",
+            hovermode="x unified",
+            template="plotly_white",
+            height=400,
+            margin=dict(l=0, r=0, t=30, b=0),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig_res, use_container_width=True)
+
+    with col_t:
+        st.write("**Key Degradation Steps**")
+        # Mostramos la tabla de eventos críticos para entender los saltos en la gráfica
+        st.dataframe(
+            df_criticos[["Tiempo", "Px", "Mu"]],
+            column_config={
+                "Tiempo": st.column_config.NumberColumn("Time [y]", format="%.1f"),
+                "Px": st.column_config.NumberColumn("Corr. [mm]", format="%.3f"),
+                "Mu": st.column_config.NumberColumn("Mu [kNm]", format="%.2f"),
+            },
+            hide_index=True,
+            use_container_width=True
+        )
