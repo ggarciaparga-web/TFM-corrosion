@@ -340,3 +340,117 @@ with tab_mc:
             hide_index=True, 
             use_container_width=True
         )
+# ==========================================
+# PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
+# ==========================================
+with tab_pret:
+    # 1. RECUPERACIÓN DE VALORES HEREDADOS (Session State)
+    # Si el usuario no ha pasado por la Tab 2, usamos valores por defecto
+    t_ini_session = st.session_state.get('t_ini_res', 0.0)
+    current_alpha = st.session_state.get('alpha', 2.0)
+    atk_type = st.session_state.get('attack_type', "Carbonation")
+
+    st.caption(f"**Heredado:** Iniciación {t_ini_session:.2f} yrs | Tipo: {atk_type}")
+
+    # 2. INPUTS DE LA PESTAÑA (Divididos en 4 columnas para incluir Pretensado)
+    # Usamos los valores de las variables de la Tab 2 como 'value' por defecto
+    cp1, cp2, cp3, cp4, c_viz_p = st.columns([1, 1, 1, 1, 2])
+
+    with cp1:
+        st.markdown("**Geometría**")
+        h_p = st.number_input("$h$ [mm]", value=h_val, key="h_pret") # h_val viene de tab_mc
+        b_p = st.number_input("$b$ [mm]", value=b_val, key="b_pret")
+    
+    with cp2:
+        st.markdown("**Recubrimientos**")
+        rs_p = st.number_input("$c_{top}$ [mm]", value=rec_sup, key="rs_pret")
+        ri_p = st.number_input("$c_{bot}$ [mm]", value=rec_inf, key="ri_pret")
+        
+    with cp3:
+        st.markdown("**Armadura Activa**")
+        phi_p0 = st.number_input("$\Phi_{p}$ [mm]", value=14.0, key="phi_p_pret")
+        n_p = st.number_input("$N_{p}$ cordones", value=2, key="n_p_pret")
+        ae_val = st.number_input("$A_e$ (Excent.) [mm]", value=92.0, key="ae_pret")
+
+    with cp4:
+        st.markdown("**Materiales P.**")
+        fpy = st.number_input("$f_{py}$ [MPa]", value=1860, key="fpy_pret")
+        fck_p = st.number_input("$f_{ck}$ [MPa]", value=fck_val, key="fck_pret")
+
+    # --- DIBUJO DE LA SECCIÓN (Heredado y con cable de pretensado) ---
+    with c_viz_p:
+        fig_sec_p = go.Figure()
+        # Hormigón
+        fig_sec_p.add_shape(type="rect", x0=0, y0=0, x1=b_p, y1=h_p,
+                          line=dict(color="Black", width=2), fillcolor="LightGrey", opacity=0.3)
+        
+        # Dibujar cable de pretensado (Punto naranja grande en la excentricidad Ae)
+        # Nota: La posición Y suele ser h/2 - Ae o similar según convenio
+        y_pret = (h_p / 2) - ae_val
+        fig_sec_p.add_trace(go.Scatter(x=[b_p/2], y=[y_pret],
+                    mode='markers+text', 
+                    marker=dict(size=phi_p0*1.2, color="#FF8C00", symbol="diamond"), 
+                    name="Prestressing", text=["Prestressing Cable"], textposition="top center", showlegend=False))
+
+        # Dibujar también armadura pasiva heredada (pequeña, para referencia)
+        if n_inf > 0:
+            spacing_i = (b_p - 2*ri_p) / (n_inf - 1) if n_inf > 1 else 0
+            for i in range(n_inf):
+                fig_sec_p.add_trace(go.Scatter(x=[ri_p + i*spacing_i], y=[ri_p],
+                    mode='markers', marker=dict(size=phi_inf_0*0.5, color="#228B22", opacity=0.4), showlegend=False))
+
+        fig_sec_p.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
+                              height=220, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_sec_p, use_container_width=True)
+
+    st.divider()
+
+    # 3. PREPARACIÓN DE PARÁMETROS PARA CÁLCULOS ESPECÍFICOS
+    # Creamos el diccionario que tus funciones de Cortante y Pretensado necesitan
+    params_pret = {
+        't_global': t_global,
+        't_ini': t_ini_session,
+        'h': h_p, 
+        'bw': b_p, 
+        'rec_inf': ri_p,
+        'phi_inf_0': phi_inf_0, 
+        'n_inf': n_inf,
+        'Ae': ae_val, 
+        'dg': 25.0, # Valor por defecto para árido
+        'fck': fck_p, 
+        'Es': 200000, # MPa
+        'fpy': fpy, 
+        'phi_p0': phi_p0, 
+        'n_p': n_p,
+        'Med': 0.0, # Solicitación por defecto
+        'Ved': 30.0, 
+        'icorr': icorr_val, 
+        'alpha': current_alpha
+    }
+
+    # 4. LLAMADA A FUNCIONES DE CÁLCULO
+    # (Asegúrate de que calc_cor y calc_pre acepten el diccionario params_pret)
+    res_cortante = calc_cor.calcular_degradacion_cortante(params_pret)
+    df_v = pd.DataFrame(res_cortante)
+
+    res_tensiones = calc_pre.calcular_tensiones_pretensado(params_pret)
+    df_t = pd.DataFrame(res_tensiones)
+
+    # 5. GRÁFICAS DE RESULTADOS
+    col_g1, col_g2 = st.columns(2)
+
+    with col_g1:
+        st.markdown("### $V_{rd,c}$ - Shear Capacity Decay")
+        fig_v = go.Figure()
+        fig_v.add_trace(go.Scatter(x=df_v['t'], y=df_v['vrdc'], name="Shear Capacity", line=dict(color='red', width=3)))
+        fig_v.add_vline(x=t_ini_session, line_dash="dash", line_color="orange")
+        fig_v.update_layout(plot_bgcolor='white', xaxis_title="Time [years]", yaxis_title="Vrd,c [kN]", height=350)
+        st.plotly_chart(fig_v, use_container_width=True)
+
+    with col_g2:
+        st.markdown("### Concrete Stresses (Top vs Bottom)")
+        fig_t = go.Figure()
+        fig_t.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_inferior'], name="$\sigma$ Bottom", line=dict(color='#005293')))
+        fig_t.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_superior'], name="$\sigma$ Top", line=dict(color='#A60628')))
+        fig_t.update_layout(plot_bgcolor='white', xaxis_title="Time [years]", yaxis_title="Stress [MPa]", height=350)
+        st.plotly_chart(fig_t, use_container_width=True)
