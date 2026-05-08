@@ -443,7 +443,7 @@ with tab_pret:
     fig_stresses.add_trace(go.Scatter(
         x=df_t['t'], 
         y=df_t['sigma_inferior'], 
-        name="$\sigma$ Bottom (comp/tens)", 
+        name=r"$\sigma_{inf} \text{ (Bottom)}$", 
         line=dict(color='#228B22', width=3)
     ))
 
@@ -451,7 +451,7 @@ with tab_pret:
     fig_stresses.add_trace(go.Scatter(
         x=df_t['t'], 
         y=df_t['sigma_superior'], 
-        name="$\sigma$ Top", 
+        name=r"$\sigma_{sup} \text{ (Top)}$", 
         line=dict(color='#A60628', width=3)
     ))
 
