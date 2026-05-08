@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import base64
 import plotly.graph_objects as go
 from calculos import tiempoiniciacion as calc_ini
 from calculos import Modelcode as calc_mc
@@ -22,7 +23,50 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- HEADER ---
-st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
+#st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
+# --- BLOQUE PARA EL BANNER CON ACUARELA ---
+def get_base64(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+try:
+    # Intentamos cargar tu acuarela
+    img_base64 = get_base64("captra.png")
+    
+    st.markdown(
+        f"""
+        <style>
+        .header-container {{
+            background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), url("data:image/png;base64,{img_base64}");
+            background-size: cover;
+            background-position: center;
+            padding: 70px 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+        }}
+        .title-text {{
+            color: #1a1a1a;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 35px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(255,255,255,0.8);
+            margin: 0;
+        }}
+        </style>
+        
+        <div class="header-container">
+            <p class="title-text">Durability and residual capacity platform</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+except FileNotFoundError:
+    # Si la imagen no está, mostramos el título normal para que no de error
+    st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
+    st.warning("No se encontró el archivo 'captra.png'. Colócalo en la carpeta del proyecto.")
 
 head_col1, head_col2, head_col3, head_col4 = st.columns([1, 1, 1, 1])
 
