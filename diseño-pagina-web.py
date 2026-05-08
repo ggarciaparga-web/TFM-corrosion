@@ -406,7 +406,7 @@ with tab_pret:
             x_p = ri_p if np_p > 1 else b_p/2
             for i in range(np_p):
                 fig_sec_p.add_trace(go.Scatter(x=[x_p + i*spacing_p], y=[y_pretensado],
-                    mode='markers', marker=dict(size=phi_p_val*1.1, color="#yellow"), 
+                    mode='markers', marker=dict(size=phi_p_val*1.1, color="#FFFF00"), 
                     showlegend=False))
 
         fig_sec_p.update_layout(
