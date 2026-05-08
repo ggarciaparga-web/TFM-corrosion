@@ -261,7 +261,7 @@ with tab_mc:
         t_ini=t_ini_session
     )
     # Llamada a la función del modelo Contevect
-    t_v, df_criticos, mu_v = calc_cv.calcular_contevect(
+    t_cv, df_criticos, mu_cv = calc_cv.calcular_contevect(
         t_ana=t_global,
         b_val=b_val,
         h_val=h_val,
