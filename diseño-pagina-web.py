@@ -233,9 +233,9 @@ with tab_mc:
 
         # Configuración de ejes para que el dibujo no se deforme
         fig_sec.update_layout(
-            xaxis=dict(visible=False, range=[-10, b_val+10]),
-            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1, range=[-10, h_val+10]),
-            height=200, 
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1,),
+            height=180, 
             margin=dict(l=5, r=5, t=5, b=5),
             plot_bgcolor='rgba(0,0,0,0)'
         )
