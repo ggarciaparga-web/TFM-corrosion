@@ -277,75 +277,31 @@ with tab_mc:
     )
 
     # Visualización de resultados
-    # --- VISUALIZACIÓN DE RESULTADOS ---
-    st.subheader("Residual Flexural Capacity Comparison")
+    # --- GRÁFICA COMPARATIVA ---
+    st.subheader("Comparison of Residual Capacity Models")
     col_graph, col_table = st.columns([2, 1])
 
     with col_graph:
         fig_res = go.Figure()
 
-        # 1. Curva CONTEVECT (Verde oscuro)
-        fig_res.add_trace(go.Scatter(
-            x=t_v_cv, y=mu_v_cv, 
-            name="Contevect Model", 
-            line=dict(color="#228B22", width=4)
-        ))
+        # 1. Contevect (Verde)
+        fig_res.add_trace(go.Scatter(x=t_v_cv, y=mu_v_cv, name="Contevect Model", line=dict(color="#228B22", width=3)))
 
-        # 2. Curva MODEL CODE STANDARD (Azul)
-        fig_res.add_trace(go.Scatter(
-            x=t_v_mc, y=mu_std_mc, 
-            name="Model Code Standard", 
-            line=dict(color="#1f77b4", width=2, dash="dash")
-        ))
+        # 2. Model Code Standard (Azul) - Usando mu_std_mc del return
+        fig_res.add_trace(go.Scatter(x=t_v_mc, y=mu_std_mc, name="MC Standard", line=dict(color="#1f77b4", width=2, dash="dash")))
 
-        # 3. Curva MODEL CODE CONSERVATIVE (Rojo)
-        fig_res.add_trace(go.Scatter(
-            x=t_v_mc, y=mu_cons_mc, 
-            name="Model Code Conservative", 
-            line=dict(color="#d62728", width=2, dash="dot")
-        ))
+        # 3. Model Code Conservative (Rojo) - Usando mu_cons_mc del return
+        fig_res.add_trace(go.Scatter(x=t_v_mc, y=mu_cons_mc, name="MC Conservative", line=dict(color="#d62728", width=2, dash="dot")))
 
-        # 4. PUNTOS CRÍTICOS (Diamantes rojos del Contevect)
-        fig_res.add_trace(go.Scatter(
-            x=df_criticos["Tiempo"], y=df_criticos["Mu"], 
-            mode='markers',
-            name='Contevect Critical Events', 
-            marker=dict(color='FireBrick', size=10, symbol='diamond'),
-            hovertemplate="Time: %{x:.2f} yrs<br>Mu: %{y:.2f} kNm<extra></extra>"
-        ))
+        # 4. Diamantes de Eventos Críticos (Contevect)
+        fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"], mode='markers', name='Critical Events', marker=dict(color='FireBrick', size=10, symbol='diamond')))
 
-        # Configuración estética de la gráfica
-        fig_res.update_layout(
-            xaxis_title="Time [years]", 
-            yaxis_title="Moment Capacity [kNm]", 
-            hovermode="x unified", 
-            template="plotly_white", 
-            height=500,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-        
-        # Añadir línea de tiempo de iniciación
-        fig_res.add_vline(x=t_ini_session, line_dash="dash", line_color="gray", opacity=0.5)
-
+        fig_res.update_layout(xaxis_title="Time [years]", yaxis_title="Moment Capacity [kNm]", hovermode="x unified", template="plotly_white")
         st.plotly_chart(fig_res, use_container_width=True)
 
     with col_table:
-        st.write("**Key Degradation Steps (Contevect)**")
-        st.dataframe(
-            df_criticos[["Tiempo", "Px", "Mu"]],
-            column_config={
-                "Tiempo": st.column_config.NumberColumn("Time [y]", format="%.1f"),
-                "Px": st.column_config.NumberColumn("Corr. [mm]", format="%.3f"),
-                "Mu": st.column_config.NumberColumn("Mu [kNm]", format="%.2f")
-            },
-            hide_index=True, 
-            use_container_width=True
-        )
-        
-        # Opcional: Métricas comparativas al final del tiempo global
-        st.divider()
-        st.write("**Comparison at end of study**")
-        st.metric("Contevect Mu", f"{mu_v_cv[-1]:.2f} kNm")
-        st.metric("MC Standard Mu", f"{mu_std_mc[-1]:.2f} kNm")
+        st.write("**Contevect Events**")
+        st.dataframe(df_criticos[["Tiempo", "Px", "Mu"]], hide_index=True)
+
     
   
