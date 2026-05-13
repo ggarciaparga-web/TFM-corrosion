@@ -372,11 +372,38 @@ with tab_pret:
 
     st.subheader("Prestressing stress evolution")
     fig_stresses = go.Figure()
-    fig_stresses.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_inferior'], name="σ Bottom", line=dict(color='#228B22', width=3)))
-    fig_stresses.add_trace(go.Scatter(x=df_t['t'], y=df_t['sigma_superior'], name="σ Top", line=dict(color='#A60628', width=3)))
+
+    # Añadimos hovertemplate con :.1f para forzar un solo decimal
+    fig_stresses.add_trace(go.Scatter(
+        x=df_t['t'], 
+        y=df_t['sigma_inferior'], 
+        name="σ Bottom", 
+        line=dict(color='#228B22', width=3),
+        hovertemplate="%{y:.1f} MPa"
+    ))
+    
+    fig_stresses.add_trace(go.Scatter(
+        x=df_t['t'], 
+        y=df_t['sigma_superior'], 
+        name="σ Top", 
+        line=dict(color='#A60628', width=3),
+        hovertemplate="%{y:.1f} MPa"
+    ))
     
     fig_stresses.add_vline(x=t_ini_session, line_dash="dash", line_color="#FFD700", annotation_text="Start")
-    if t_life_p3: fig_stresses.add_vline(x=t_life_p3, line_dash="dot", line_color="red", annotation_text=f"End of Life ({umbral_px_p3}mm)")
+    if t_life_p3: 
+        fig_stresses.add_vline(x=t_life_p3, line_dash="dot", line_color="red", annotation_text=f"End of Life ({umbral_px_p3}mm)")
 
-    fig_stresses.update_layout(xaxis_title="Time [years]", yaxis_title="Stress [MPa]", hovermode="x unified", template="plotly_white", height=450, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    fig_stresses.update_layout(
+        xaxis_title="Time [years]", 
+        yaxis_title="Stress [MPa]", 
+        hovermode="x unified", 
+        template="plotly_white", 
+        height=450, 
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        # Forzamos que los ejes empiecen en cero
+        xaxis=dict(rangemode="tozero"),
+        yaxis=dict(rangemode="tozero")
+    )
+    
     st.plotly_chart(fig_stresses, use_container_width=True)
