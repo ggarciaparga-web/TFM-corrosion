@@ -107,7 +107,7 @@ if 't_ini_res' not in st.session_state: st.session_state['t_ini_res'] = 0.0
 if 'tipo_ataque' not in st.session_state: st.session_state['tipo_ataque'] = "Carbonatación"
 if 'alpha' not in st.session_state: st.session_state['alpha'] = 2.0 
 
-tab_ini, tab_mc, tab_pret = st.tabs(["Initation period", "Residual strength", "Prestressed"])
+tab_ini, tab_mc, tab_pret = st.tabs(["Initation period", "Residual capacity", "Prestressed"])
 
 # ==========================================
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
@@ -298,6 +298,7 @@ with tab_mc:
         if t_life: fig_res.add_vline(x=t_life, line_dash="dot", line_color="red", annotation_text=f"End of Life ({umbral_px}mm)")
 
         fig_res.update_layout(xaxis_title="Time [years]", yaxis_title="Moment Capacity [kNm]", hovermode="x unified", template="plotly_white", height=450, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+        yaxis=dict(rangemode="tozero")
         st.plotly_chart(fig_res, use_container_width=True)
 
     with col_table:
