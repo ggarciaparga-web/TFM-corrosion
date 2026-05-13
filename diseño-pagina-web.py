@@ -297,8 +297,18 @@ with tab_mc:
         fig_res.add_vline(x=t_ini_session, line_dash="dash", line_color="orange", opacity=0.7, annotation_text="Start")
         if t_life: fig_res.add_vline(x=t_life, line_dash="dot", line_color="red", annotation_text=f"End of Life ({umbral_px}mm)")
 
-        fig_res.update_layout(xaxis_title="Time [years]", yaxis_title="Moment Capacity [kNm]", hovermode="x unified", template="plotly_white", height=450, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-        yaxis=dict(rangemode="tozero")
+        fig_res.update_layout(
+            xaxis_title="Time [years]", 
+            yaxis_title="Moment Capacity [kNm]", 
+            hovermode="x unified", 
+            template="plotly_white", 
+            height=450, 
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            # --- SOLUCIÓN AQUÍ ---
+            xaxis=dict(rangemode="tozero"), # Fuerza a que el eje X incluya el 0
+            yaxis=dict(rangemode="tozero")  # Fuerza a que el eje Y incluya el 0
+        )
+        
         st.plotly_chart(fig_res, use_container_width=True)
 
     with col_table:
