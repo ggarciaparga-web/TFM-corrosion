@@ -321,7 +321,7 @@ with tab_mc:
             line_width=1.5,
             opacity=0.8,
             annotation=dict(
-                text=f"<b>{t_ini_session:.1f} y</b>",
+                text=f"<b>{t_ini_session:.1f} years</b>",
                 font=dict(size=11, color="#555555"),
                 bgcolor="rgba(255,255,255,0.7)",
                 borderpad=3,
@@ -339,7 +339,7 @@ with tab_mc:
                 line_color="#CC0000",
                 line_width=1.5,
                 annotation=dict(
-                    text=f"<b>End of Life<br>{t_life:.1f} y</b>",
+                    text=f"<b>End of Life<br>{t_life:.1f} years</b>",
                     font=dict(size=11, color="#CC0000"),
                     bgcolor="rgba(255,255,255,0.7)",
                     borderpad=3,
@@ -484,7 +484,7 @@ with tab_pret:
         line_width=1.5,
         opacity=0.8,
         annotation=dict(
-            text=f"<b>{t_ini_session:.1f} y</b>",
+            text=f"<b>{t_ini_session:.1f} years</b>",
             font=dict(size=11, color="#555555"),
             bgcolor="rgba(255,255,255,0.7)",
             borderpad=3,
@@ -502,7 +502,7 @@ with tab_pret:
             line_color="#CC0000",
             line_width=1.5,
             annotation=dict(
-                text=f"<b>End of Life<br>{t_life_p3:.1f} y</b>",
+                text=f"<b>End of Life<br>{t_life_p3:.1f} years</b>",
                 font=dict(size=11, color="#CC0000"),
                 bgcolor="rgba(255,255,255,0.7)",
                 borderpad=3,
