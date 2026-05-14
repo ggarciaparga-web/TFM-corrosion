@@ -22,11 +22,6 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- HEADER ---
-#st.markdown('<p class="title-text">Durability and residual capacity platform</p>', unsafe_allow_html=True)
-# --- BLOQUE PARA EL BANNER CON ACUARELA ---
-st.set_page_config(page_title="Durability Platform", layout="wide")
-
 # --- FUNCIÓN PARA PROCESAR LA IMAGEN ---
 def get_base64(bin_file):
     try:
@@ -36,10 +31,8 @@ def get_base64(bin_file):
     except FileNotFoundError:
         return None
 
-# Intentamos obtener el código de la imagen 'captra.png'
 img_base64 = get_base64("captra.png")
 
-# --- BLOQUE DE ENCABEZADO (BANNER ARTÍSTICO) ---
 if img_base64:
     st.markdown(
         f"""
@@ -47,41 +40,28 @@ if img_base64:
         .header-container {{
             background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), 
                               url("data:image/png;base64,{img_base64}");
-            
-            /* 1. ESTRECHAR AL MÁXIMO: Reducimos el padding vertical a solo 15px o 20px */
             padding: 20px 20px; 
-            
-            /* 2. CENTRAR EN LAS PILAS: 
-               Si las pilas están en la mitad inferior de tu imagen, usa un valor alto (70%-80%). 
-               Si quieres subirlas o bajarlas, toca este segundo número. */
             background-position: 50% 65%; 
-            
-            /* 3. MANTENER PROPORCIÓN */
             background-size: cover;
-            
             border-radius: 8px;
             text-align: center;
             margin-bottom: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            
-            /* 4. ALTURA FIJA: Forzamos a que la franja no crezca */
             height: 100px; 
             overflow: hidden;
         }}
-        
         .title-text {{
             color: #1a1a1a;
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            font-size: 28px; /* Texto un poco más pequeño para que quepa en la franja estrecha */
+            font-size: 28px;
             font-weight: 700;
             text-shadow: 2px 2px 8px rgba(255,255,255,1);
             margin: 0;
             padding: 0;
         }}
         </style>
-        
         <div class="header-container">
             <p class="title-text">Durability and residual capacity platform</p>
         </div>
@@ -89,17 +69,12 @@ if img_base64:
         unsafe_allow_html=True
     )
 else:
-    # Si no encuentra la imagen, pone el título sencillo para no interrumpir el flujo
     st.title("Durability and residual capacity platform")
-    st.warning("⚠️ Imagen 'captra.png' no encontrada. Asegúrate de que esté en la misma carpeta que este script.")
-
-##
+    st.warning("⚠️ Imagen 'captra.png' no encontrada.")
 
 head_col1, head_col2, head_col3, head_col4 = st.columns([1, 1, 1, 1])
-
 with head_col1:
     t_global = st.number_input("Study time [years]", value=250, step=1, key="global_time")
-
 with head_col2:
     icorr_val = st.number_input("$I_{corr}$ [$\mu A/cm^2$]", value=0.5, step=0.1, key="global_icorr")
 
@@ -112,14 +87,10 @@ tab_ini, tab_mc, tab_pret = st.tabs(["Initation period", "Residual capacity", "P
 # ==========================================
 # PESTAÑA 1: TIEMPO DE INICIACIÓN
 # ==========================================
-# ==========================================
-# PESTAÑA 1: TIEMPO DE INICIACIÓN
-# ==========================================
 with tab_ini:
     attack_type = st.radio("Select analysis phenomenon:", ["Carbonation", "Chlorides"], horizontal=True)
     st.session_state['attack_type'] = attack_type
 
-    # Definición de Alpha según tipo de ataque
     if attack_type == "Carbonation":
         st.session_state['alpha'] = 2.0
     else:
@@ -152,7 +123,7 @@ with tab_ini:
         t_i, w_i, y_vals, t_ini_calc = calc_ini.calcular_carbonatacion(d_mm, rh_real, hre, ge, fe, kcd, kt, csd, racc, psr, rain_days, bw_ini, t0_ini, t_global)
         y_label, limit_val = "Carbonation Depth [mm]", d_mm
 
-    else:  # CHLORIDES
+    else:
         with c2: 
             c0 = st.number_input("$C_{0}$ [%]", value=0.1)
             cs = st.number_input("$C_{s}$ [%]", value=4.0)
@@ -169,12 +140,10 @@ with tab_ini:
         t_i, dapp, z, y_vals, t_ini_calc = calc_ini.calcular_cloruros(d_mm, c0, cs, ccrit, b_cl, tref, treal, ke, t0_cl, a_age, dcrm, t_global)
         y_label, limit_val = "Concentration [%]", ccrit
 
-    # Guardar resultado en sesión
     st.session_state['t_ini_res'] = t_ini_calc if t_ini_calc is not None else 0.0
 
     st.divider()
 
-    # --- SECCIÓN DE RESULTADOS EN TRES COLUMNAS ---
     res_metrica, res_tuutti, res_progreso = st.columns([0.8, 2, 2])
 
     with res_metrica:
@@ -183,11 +152,8 @@ with tab_ini:
         else: 
             st.warning("No initiation detected")
 
-    # Gráfica del Modelo de Tuutti (Penetración Px)
     with res_tuutti:
         if t_i is not None:
-            # Cálculo de Px: 0 hasta t_ini, luego lineal
-            # Px = 0.0116 * Icorr * (t - t_ini)
             t_ini_eff = st.session_state['t_ini_res']
             tiempos_propagacion = np.maximum(0, t_i - t_ini_eff)
             px_vals = 0.0116 * icorr_val * tiempos_propagacion
@@ -198,9 +164,6 @@ with tab_ini:
                 line=dict(color='#228B22', width=3), 
                 name="Penetration $P_x$"
             ))
-            
-            
-            
             fig_tuutti.update_layout(
                 title="Tuutti's Model (P<sub>x</sub>)",
                 height=280, 
@@ -211,7 +174,6 @@ with tab_ini:
             )
             st.plotly_chart(fig_tuutti, use_container_width=True)
 
-    # Gráfica de Progreso de Iniciación (La original)
     with res_progreso:
         if t_i is not None:
             fig_ini = go.Figure()
@@ -234,6 +196,7 @@ with tab_ini:
                 margin=dict(l=0, r=0, t=40, b=0)
             )
             st.plotly_chart(fig_ini, use_container_width=True)
+
 # ==========================================
 # PESTAÑA 2: CAPACIDAD ESTRUCTURAL (FLEXIÓN)
 # ==========================================
@@ -262,24 +225,55 @@ with tab_mc:
 
     with c_viz:
         fig_sec = go.Figure()
-        fig_sec.add_shape(type="rect", x0=0, y0=0, x1=b_val, y1=h_val, line=dict(color="Black", width=2), fillcolor="LightGrey", opacity=0.3)
+        # Sección rectangular
+        fig_sec.add_shape(
+            type="rect", x0=0, y0=0, x1=b_val, y1=h_val,
+            line=dict(color="Black", width=2),
+            fillcolor="LightGrey", opacity=0.3
+        )
+        # Armado SUPERIOR → gris oscuro / negro
         if n_sup > 0:
             spacing_s = (b_val - 2*rec_sup) / (n_sup - 1) if n_sup > 1 else 0
             x_s = rec_sup if n_sup > 1 else b_val/2
-            for i in range(n_sup): fig_sec.add_trace(go.Scatter(x=[x_s + i*spacing_s], y=[h_val - rec_sup], mode='markers', marker=dict(size=p_sup*0.8, color="#FF0000"), showlegend=False))
+            for i in range(n_sup):
+                fig_sec.add_trace(go.Scatter(
+                    x=[x_s + i*spacing_s], y=[h_val - rec_sup],
+                    mode='markers',
+                    marker=dict(size=p_sup*0.8, color="#2C2C2C"),  # gris muy oscuro
+                    showlegend=False
+                ))
+        # Armado INFERIOR → rojo
         if n_inf > 0:
             spacing_i = (b_val - 2*rec_inf) / (n_inf - 1) if n_inf > 1 else 0
             x_i = rec_inf if n_inf > 1 else b_val/2
-            for i in range(n_inf): fig_sec.add_trace(go.Scatter(x=[x_i + i*spacing_i], y=[rec_inf], mode='markers', marker=dict(size=phi_inf_0*0.8, color="#228B22"), showlegend=False))
-        fig_sec.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1,), height=180, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)')
+            for i in range(n_inf):
+                fig_sec.add_trace(go.Scatter(
+                    x=[x_i + i*spacing_i], y=[rec_inf],
+                    mode='markers',
+                    marker=dict(size=phi_inf_0*0.8, color="#CC0000"),  # rojo
+                    showlegend=False
+                ))
+        fig_sec.update_layout(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
+            height=180,
+            margin=dict(l=5, r=5, t=5, b=5),
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
         st.plotly_chart(fig_sec, use_container_width=True)
 
     st.divider()
 
-    t_mc, px_mc, phi_inf_mc, mu_std_mc, mu_cons_mc = calc_mc.calcular_capacidad_residual(t_global, b_val, h_val, rec_sup, rec_inf, n_sup, p_sup, n_inf, phi_inf_0, fyk, fck_val, icorr_val, current_alpha, t_ini_session)
-    t_cv, df_criticos, mu_cv = calc_cv.calcular_contevect(t_global, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0, fyk, fck_val, icorr_val, current_alpha, t_ini_session)
+    t_mc, px_mc, phi_inf_mc, mu_std_mc, mu_cons_mc = calc_mc.calcular_capacidad_residual(
+        t_global, b_val, h_val, rec_sup, rec_inf, n_sup, p_sup, n_inf, phi_inf_0,
+        fyk, fck_val, icorr_val, current_alpha, t_ini_session
+    )
+    t_cv, df_criticos, mu_cv = calc_cv.calcular_contevect(
+        t_global, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0,
+        fyk, fck_val, icorr_val, current_alpha, t_ini_session
+    )
 
-    # --- LÓGICA RECTAS FIN DE VIDA ÚTIL ---
+    # Lógica fin de vida útil
     umbral_px = 0.05 if atk_type == "Carbonation" else 0.5
     idx_life = np.where(px_mc >= umbral_px)[0]
     t_life = t_mc[idx_life[0]] if len(idx_life) > 0 else None
@@ -289,34 +283,99 @@ with tab_mc:
 
     with col_graph:
         fig_res = go.Figure()
-        fig_res.add_trace(go.Scatter(x=t_cv, y=mu_cv, name="Contevect Model", line=dict(color="#228B22", width=4)))
-        fig_res.add_trace(go.Scatter(x=t_mc, y=mu_std_mc, name="MC Standard", line=dict(color="#1f77b4", width=2, dash="dash")))
-        fig_res.add_trace(go.Scatter(x=t_mc, y=mu_cons_mc, name="MC Conservative", line=dict(color="#d62728", width=2, dash="dot")))
-        fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"], mode='markers', name='Critical Events (CV)', marker=dict(color='FireBrick', size=10, symbol='diamond')))
-        
-        fig_res.add_vline(x=t_ini_session, line_dash="dash", line_color="orange", opacity=0.7, annotation_text="Start")
-        if t_life: fig_res.add_vline(x=t_life, line_dash="dot", line_color="red", annotation_text=f"End of Life ({umbral_px}mm)")
+
+        # Color de la línea Contevect — verde oscuro
+        COLOR_CV   = "#228B22"
+        COLOR_STD  = "#1f77b4"
+        COLOR_CONS = "#d62728"
+        LINE_W = 3  # mismo grosor para las 3 curvas
+
+        fig_res.add_trace(go.Scatter(
+            x=t_cv, y=mu_cv,
+            name="Contevect Model",
+            line=dict(color=COLOR_CV, width=LINE_W)
+        ))
+        fig_res.add_trace(go.Scatter(
+            x=t_mc, y=mu_std_mc,
+            name="MC Standard",
+            line=dict(color=COLOR_STD, width=LINE_W, dash="dash")
+        ))
+        fig_res.add_trace(go.Scatter(
+            x=t_mc, y=mu_cons_mc,
+            name="MC Conservative",
+            line=dict(color=COLOR_CONS, width=LINE_W, dash="dot")
+        ))
+        # Puntos críticos Contevect: mismo color que la línea Contevect
+        fig_res.add_trace(go.Scatter(
+            x=df_criticos["Tiempo"], y=df_criticos["Mu"],
+            mode='markers',
+            name='Critical Events (CV)',
+            marker=dict(color=COLOR_CV, size=10, symbol='diamond')
+        ))
+
+        # Línea de inicio: gris con valor en negrita en el eje X
+        fig_res.add_vline(
+            x=t_ini_session,
+            line_dash="dash",
+            line_color="#888888",  # gris
+            line_width=1.5,
+            opacity=0.8,
+            annotation=dict(
+                text=f"<b>{t_ini_session:.1f} y</b>",
+                font=dict(size=11, color="#555555"),
+                bgcolor="rgba(255,255,255,0.7)",
+                borderpad=3,
+                yref="paper",
+                y=0,         # posición en la base del gráfico (eje X)
+                yanchor="top"
+            )
+        )
+
+        # Línea de fin de vida: roja con valor en negrita en el eje X
+        if t_life:
+            fig_res.add_vline(
+                x=t_life,
+                line_dash="dot",
+                line_color="#CC0000",
+                line_width=1.5,
+                annotation=dict(
+                    text=f"<b>End of Life<br>{t_life:.1f} y</b>",
+                    font=dict(size=11, color="#CC0000"),
+                    bgcolor="rgba(255,255,255,0.7)",
+                    borderpad=3,
+                    yref="paper",
+                    y=0,
+                    yanchor="top"
+                )
+            )
 
         fig_res.update_layout(
-            xaxis_title="Time [years]", 
-            yaxis_title="Moment Capacity [kNm]", 
-            hovermode="x unified", 
-            template="plotly_white", 
-            height=450, 
+            xaxis_title="Time [years]",
+            yaxis_title="Moment Capacity [kNm]",
+            hovermode="x unified",
+            template="plotly_white",
+            height=450,
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            # --- SOLUCIÓN AQUÍ ---
-            xaxis=dict(rangemode="tozero"), # Fuerza a que el eje X incluya el 0
-            yaxis=dict(rangemode="tozero")  # Fuerza a que el eje Y incluya el 0
+            xaxis=dict(rangemode="tozero"),
+            yaxis=dict(rangemode="tozero")
         )
-        
         st.plotly_chart(fig_res, use_container_width=True)
 
     with col_table:
         st.write("**Key Degradation Steps (Contevect)**")
-        st.dataframe(df_criticos[["Tiempo", "Px", "Mu"]], column_config={"Tiempo": st.column_config.NumberColumn("Time [y]", format="%.1f"), "Px": st.column_config.NumberColumn("Corr. [mm]", format="%.3f"), "Mu": st.column_config.NumberColumn("Mu [kNm]", format="%.2f")}, hide_index=True, use_container_width=True)
+        st.dataframe(
+            df_criticos[["Tiempo", "Px", "Mu"]],
+            column_config={
+                "Tiempo": st.column_config.NumberColumn("Time [y]", format="%.1f"),
+                "Px":     st.column_config.NumberColumn("Corr. [mm]", format="%.3f"),
+                "Mu":     st.column_config.NumberColumn("Mu [kNm]", format="%.2f")
+            },
+            hide_index=True,
+            use_container_width=True
+        )
 
 # ==========================================
-# PESTAÑA 3: PRETENSADO (CORTANTE Y TENSIONES)
+# PESTAÑA 3: PRETENSADO
 # ==========================================
 with tab_pret:
     t_ini_session = st.session_state.get('t_ini_res', 0.0)
@@ -346,26 +405,55 @@ with tab_pret:
 
     with c_viz:
         fig_sec_p = go.Figure()
-        fig_sec_p.add_shape(type="rect", x0=0, y0=0, x1=b_p, y1=h_p, line=dict(color="Black", width=2), fillcolor="LightGrey", opacity=0.3)
+        fig_sec_p.add_shape(
+            type="rect", x0=0, y0=0, x1=b_p, y1=h_p,
+            line=dict(color="Black", width=2),
+            fillcolor="LightGrey", opacity=0.3
+        )
+        # Armado SUPERIOR → gris oscuro / negro (mismo tono que pestaña 2)
         if nt_p > 0:
             spacing_s = (b_p - 2*rs_p) / (nt_p - 1) if nt_p > 1 else 0
             x_s = rs_p if nt_p > 1 else b_p/2
-            for i in range(nt_p): fig_sec_p.add_trace(go.Scatter(x=[x_s + i*spacing_s], y=[h_p - rs_p], mode='markers', marker=dict(size=pt_p*0.8, color="#FF0000"), showlegend=False))
+            for i in range(nt_p):
+                fig_sec_p.add_trace(go.Scatter(
+                    x=[x_s + i*spacing_s], y=[h_p - rs_p],
+                    mode='markers',
+                    marker=dict(size=pt_p*0.8, color="#2C2C2C"),  # gris muy oscuro
+                    showlegend=False
+                ))
+        # Armado INFERIOR (pretensado) → azul
         y_pretensado = (h_p / 2) - ae_p3_val
         if np_p > 0:
             spacing_p = (b_p - 2*ri_p) / (np_p - 1) if np_p > 1 else 0
             x_p = ri_p if np_p > 1 else b_p/2
-            for i in range(np_p): fig_sec_p.add_trace(go.Scatter(x=[x_p + i*spacing_p], y=[y_pretensado], mode='markers', marker=dict(size=phi_p_val*1.1, color="#FFFF00"), showlegend=False))
-        fig_sec_p.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False, scaleanchor="x", scaleratio=1), height=180, margin=dict(l=5, r=5, t=5, b=5), plot_bgcolor='rgba(0,0,0,0)')
+            for i in range(np_p):
+                fig_sec_p.add_trace(go.Scatter(
+                    x=[x_p + i*spacing_p], y=[y_pretensado],
+                    mode='markers',
+                    marker=dict(size=phi_p_val*1.1, color="#1f77b4"),  # azul
+                    showlegend=False
+                ))
+        fig_sec_p.update_layout(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
+            height=180,
+            margin=dict(l=5, r=5, t=5, b=5),
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
         st.plotly_chart(fig_sec_p, use_container_width=True)
 
     st.divider()
 
-    params_p3 = {'t_global': t_global, 't_ini': t_ini_session, 'h': h_p, 'bw': b_p, 'phi_p0': phi_p_val, 'n_p': np_p, 'fpy': fpy_p3_val, 'Ae': ae_p3_val, 'icorr': icorr_val, 'alpha': current_alpha}
+    params_p3 = {
+        't_global': t_global, 't_ini': t_ini_session,
+        'h': h_p, 'bw': b_p,
+        'phi_p0': phi_p_val, 'n_p': np_p,
+        'fpy': fpy_p3_val, 'Ae': ae_p3_val,
+        'icorr': icorr_val, 'alpha': current_alpha
+    }
     res_tensiones = calc_pre.calcular_tensiones_pretensado(params_p3)
     df_t = pd.DataFrame(res_tensiones)
 
-    # --- LÓGICA RECTAS FIN DE VIDA ÚTIL ---
     umbral_px_p3 = 0.05 if atk_type == "Carbonation" else 0.5
     idx_life_p3 = df_t[df_t['px'] >= umbral_px_p3]
     t_life_p3 = idx_life_p3['t'].iloc[0] if not idx_life_p3.empty else None
@@ -373,37 +461,65 @@ with tab_pret:
     st.subheader("Prestressing stress evolution")
     fig_stresses = go.Figure()
 
-    # Añadimos hovertemplate con :.1f para forzar un solo decimal
     fig_stresses.add_trace(go.Scatter(
-        x=df_t['t'], 
-        y=df_t['sigma_inferior'], 
-        name="σ Bottom", 
+        x=df_t['t'],
+        y=df_t['sigma_inferior'],
+        name="σ Bottom",
         line=dict(color='#228B22', width=3),
         hovertemplate="%{y:.1f} MPa"
     ))
-    
     fig_stresses.add_trace(go.Scatter(
-        x=df_t['t'], 
-        y=df_t['sigma_superior'], 
-        name="σ Top", 
+        x=df_t['t'],
+        y=df_t['sigma_superior'],
+        name="σ Top",
         line=dict(color='#A60628', width=3),
         hovertemplate="%{y:.1f} MPa"
     ))
-    
-    fig_stresses.add_vline(x=t_ini_session, line_dash="dash", line_color="#FFD700", annotation_text="Start")
-    if t_life_p3: 
-        fig_stresses.add_vline(x=t_life_p3, line_dash="dot", line_color="red", annotation_text=f"End of Life ({umbral_px_p3}mm)")
+
+    # Línea de inicio: gris con valor en negrita en base del eje X
+    fig_stresses.add_vline(
+        x=t_ini_session,
+        line_dash="dash",
+        line_color="#888888",
+        line_width=1.5,
+        opacity=0.8,
+        annotation=dict(
+            text=f"<b>{t_ini_session:.1f} y</b>",
+            font=dict(size=11, color="#555555"),
+            bgcolor="rgba(255,255,255,0.7)",
+            borderpad=3,
+            yref="paper",
+            y=0,
+            yanchor="top"
+        )
+    )
+
+    # Línea de fin de vida: roja con valor en negrita en base del eje X
+    if t_life_p3:
+        fig_stresses.add_vline(
+            x=t_life_p3,
+            line_dash="dot",
+            line_color="#CC0000",
+            line_width=1.5,
+            annotation=dict(
+                text=f"<b>End of Life<br>{t_life_p3:.1f} y</b>",
+                font=dict(size=11, color="#CC0000"),
+                bgcolor="rgba(255,255,255,0.7)",
+                borderpad=3,
+                yref="paper",
+                y=0,
+                yanchor="top"
+            )
+        )
 
     fig_stresses.update_layout(
-        xaxis_title="Time [years]", 
-        yaxis_title="Stress [MPa]", 
-        hovermode="x unified", 
-        template="plotly_white", 
-        height=450, 
+        xaxis_title="Time [years]",
+        yaxis_title="Stress [MPa]",
+        hovermode="x unified",
+        template="plotly_white",
+        height=450,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        # Forzamos que los ejes empiecen en cero
         xaxis=dict(rangemode="tozero"),
         yaxis=dict(rangemode="tozero")
     )
-    
     st.plotly_chart(fig_stresses, use_container_width=True)
