@@ -8,7 +8,7 @@ from calculos import Modelcode as calc_mc
 from calculos import Contevect as calc_cv
 from calculos import Cortante as calc_cor  
 from calculos import pretensado as calc_pre
-from calculos import cortantee as calc_cor
+from calculos import Cortantee as calc_cor
 
 # --- CONFIGURACIÓN Y ESTILO ---
 st.set_page_config(page_title="Concrete Durability & Structural Capacity Tool", layout="wide")
