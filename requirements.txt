@@ -3,3 +3,4 @@ pandas
 numpy
 scipy
 plotly
+plotly>=5.18.0
