@@ -422,14 +422,23 @@ with tab_pret:
         fck_p  = st.number_input("$f_{ck}$ [MPa]", value=fck_val, key="fck_p3")
 
     # ── Inputs adicionales para cortante (nuevos) ─────────────────────────────
-    st.markdown("**Shear inputs**")
-    cv1, cv2, cv3 = st.columns([1, 1, 1])
-    with cv1:
-        v_ed_val  = st.number_input("$V_{Ed}$ [kN]",  value=0.0, key="ved_p3")
-        m_ed_val  = st.number_input("$M_{Ed}$ [kNm]", value=0.0, key="med_p3")
-    with cv2:
-        gamma_v_val = st.number_input(r"$\gamma_V$",  value=1.4, key="gv_p3")
-        d_lower_val = st.number_input("$d_{lower}$ [mm]", value=12.0, key="dl_p3")
+    # Reemplazamos el texto en negrita por el expansor desplegable
+    with st.expander("📊 Shear inputs", expanded=False):
+        cv1, cv2, cv3 = st.columns([1, 1, 1])
+    
+        with cv1:
+            v_ed_val = st.number_input("$V_{Ed}$ [kN]", value=0.0, key="ved_p3")
+            m_ed_val = st.number_input("$M_{Ed}$ [kNm]", value=0.0, key="med_p3")
+        
+        with cv2:
+            gamma_v_val = st.number_input(r"$\gamma_V$", value=1.4, key="gv_p3")
+            d_lower_val = st.number_input("$d_{lower}$ [mm]", value=12.0, key="dl_p3")
+        
+        with cv3:
+            # Aquí puedes añadir más inputs si lo necesitas en el futuro
+            # para rellenar la tercera columna de forma equilibrada.
+            pass
+
     
 
     # ── Visualización de la sección ───────────────────────────────────────────
@@ -621,27 +630,5 @@ with tab_pret:
         )
         st.plotly_chart(fig_shear, use_container_width=True)
 
-    # ── Métricas resumen ──────────────────────────────────────────────────────
-    st.divider()
-    m1, m2, m3, m4 = st.columns(4)
-
-    vrd_0   = df_cor['vrd'].iloc[0]
-    vrd_end = df_cor['vrd'].iloc[-1]
-    vrd_loss = (vrd_0 - vrd_end) / vrd_0 * 100 if vrd_0 > 0 else 0
-
-    m1.metric("V$_{Rd}$ at t=0", f"{vrd_0:.1f} kN")
-    m2.metric(f"V$_{{Rd}}$ at t={int(t_global)} y", f"{vrd_end:.1f} kN",
-              delta=f"-{vrd_loss:.1f}%", delta_color="inverse")
-
-    if v_ed_val > 0:
-        # Tiempo en que VRd < VEd
-        idx_fail = df_cor[df_cor['vrd'] < v_ed_val]
-        t_fail   = idx_fail['t'].iloc[0] if not idx_fail.empty else None
-        if t_fail:
-            m3.metric("Shear failure at", f"{t_fail:.0f} years")
-        else:
-            m3.metric("Shear failure", "Not reached")
-    else:
-        m3.metric("τ$_{Rd,c0}$ at t=0", f"{df_cor['tau_c0'].iloc[0]:.3f} MPa")
-
+   
     m4.metric("σ$_{cp}$ at t=0", f"{df_cor['sigma_cp'].iloc[0]:.2f} MPa")
