@@ -557,46 +557,55 @@ with tab_pret:
         st.plotly_chart(fig_stresses, use_container_width=True)
 
     # ── Columna derecha: Cortante — VRd y componentes τ ───────────────────────
+    # ── Columna derecha: Cortante doble eje Y ────────────────────────────────
     with col_shear:
         st.subheader("Shear capacity (V$_{Rd}$)")
 
         fig_shear = go.Figure()
 
-        # VRd — línea principal azul oscuro
+        # ── Eje izquierdo (kN) ────────────────────────────────────────────────
+
+        # VRd — azul oscuro, línea principal
         fig_shear.add_trace(go.Scatter(
             x=df_cor['t'], y=df_cor['vrd'],
-            name="V<sub>Rd</sub>",
+            name="V<sub>Rd</sub> [kN]",
+            yaxis='y1',
             line=dict(color='#1f4e79', width=3),
             hovertemplate="%{y:.2f} kN"
         ))
 
-        # Cortante de demanda VEd (si es >0) — línea roja discontinua
+        # VEd — rojo discontinuo (solo si el usuario lo introduce)
         if v_ed_val > 0:
-            fig_shear.add_hline(
-                y=v_ed_val, line_dash="dot",
-                line_color="#CC0000", line_width=1.5,
-                annotation_text=f"V<sub>Ed</sub> = {v_ed_val:.1f} kN",
-                annotation_position="top right",
-                annotation_font=dict(color="#CC0000")
-            )
+            fig_shear.add_trace(go.Scatter(
+                x=[df_cor['t'].iloc[0], df_cor['t'].iloc[-1]],
+                y=[v_ed_val, v_ed_val],
+                name=f"V<sub>Ed</sub> = {v_ed_val:.1f} kN",
+                yaxis='y1',
+                line=dict(color='#CC0000', width=1.8, dash='dot'),
+                hovertemplate=f"{v_ed_val:.1f} kN"
+            ))
 
-        # τRd,c0 (componente hormigón) — verde
+        # ── Eje derecho (MPa) ─────────────────────────────────────────────────
+
+        # σ_cp — naranja, tensión media de compresión por pretensado
         fig_shear.add_trace(go.Scatter(
-            x=df_cor['t'], y=df_cor['tau_c0'] * b_p * 0.9 * (h_p - ri_p) / 1000,
-            name="V<sub>Rd,c0</sub> (conc.)",
-            line=dict(color='#228B22', width=1.5, dash='dash'),
-            hovertemplate="%{y:.2f} kN", visible='legendonly'
+            x=df_cor['t'], y=df_cor['sigma_cp'],
+            name="σ<sub>cp</sub> [MPa]",
+            yaxis='y2',
+            line=dict(color='#e17000', width=2, dash='dash'),
+            hovertemplate="%{y:.3f} MPa"
         ))
 
-        # τRd,σcp (componente pretensado) — naranja
+        # τRd,c0 — verde, contribución resistente del hormigón
         fig_shear.add_trace(go.Scatter(
-            x=df_cor['t'], y=df_cor['tau_scp'] * b_p * 0.9 * (h_p - ri_p) / 1000,
-            name="V<sub>Rd,σcp</sub> (prest.)",
-            line=dict(color='#e17000', width=1.5, dash='dot'),
-            hovertemplate="%{y:.2f} kN", visible='legendonly'
+            x=df_cor['t'], y=df_cor['tau_c0'],
+            name="τ<sub>Rd,c0</sub> [MPa]",
+            yaxis='y2',
+            line=dict(color='#228B22', width=2, dash='dashdot'),
+            hovertemplate="%{y:.3f} MPa"
         ))
 
-        # Líneas de inicio / fin de vida
+        # ── Líneas verticales inicio / fin de vida ────────────────────────────
         fig_shear.add_vline(
             x=t_ini_session, line_dash="dash",
             line_color="#888888", line_width=1.5, opacity=0.8,
@@ -619,11 +628,35 @@ with tab_pret:
                 )
             )
 
+        # ── Layout doble eje ──────────────────────────────────────────────────
         fig_shear.update_layout(
-            xaxis_title="Time [years]", yaxis_title="Shear [kN]",
-            hovermode="x unified", template="plotly_white", height=420,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            xaxis=dict(rangemode="tozero"), yaxis=dict(rangemode="tozero")
+            hovermode="x unified",
+            template="plotly_white",
+            height=420,
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02,
+                xanchor="right", x=1
+            ),
+            xaxis=dict(
+                title="Time [years]",
+                rangemode="tozero"
+            ),
+            yaxis=dict(
+                title="Shear [kN]",
+                titlefont=dict(color='#1f4e79'),
+                tickfont=dict(color='#1f4e79'),
+                rangemode="tozero",
+                side='left'
+            ),
+            yaxis2=dict(
+                title="Stress [MPa]",
+                titlefont=dict(color='#e17000'),
+                tickfont=dict(color='#e17000'),
+                rangemode="tozero",
+                overlaying='y',
+                side='right',
+                showgrid=False        # evita doble rejilla
+            )
         )
         st.plotly_chart(fig_shear, use_container_width=True)
 
