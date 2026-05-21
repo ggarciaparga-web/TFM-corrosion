@@ -39,39 +39,50 @@ if img_base64:
         f"""
         <style>
         .header-container {{
-            background-image: linear-gradient(rgba(255,255,255,0.3), rgba(255,255,255,0.3)), 
-                              url("data:image/png;base64,{img_base64}");
-            padding: 20px 20px; 
-            background-position: 50% 65%; 
+            /* Eliminamos el degradado blanco para que la imagen mantenga su fuerza */
+            background-image: url("data:image/png;base64,{img_base64}");
+            padding: 40px 20px; 
+            background-position: center 50%; /* Centra la imagen vertical y horizontalmente */
             background-size: cover;
-            border-radius: 8px;
+            border-radius: 12px;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100px; 
+            height: 220px; /* Aumentamos drásticamente la altura para que se vea el cuadro */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             overflow: hidden;
         }}
+        .title-box {{
+            /* Creamos un contenedor flotante oscuro y elegante para el texto */
+            background-color: rgba(26, 26, 26, 0.85); 
+            padding: 15px 30px;
+            border-radius: 4px;
+            border-left: 5px solid #cc0000; /* Detalle rojo vivo estilo Bauhaus/Mondrian */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }}
         .title-text {{
-            color: #1a1a1a;
+            color: #ffffff; /* Texto blanco para máximo contraste */
             font-family: 'Helvetica Neue', Arial, sans-serif;
-            font-size: 28px;
-            font-weight: 700;
-            text-shadow: 2px 2px 8px rgba(255,255,255,1);
+            font-size: 36px; /* Título considerablemente más grande */
+            font-weight: 800;
+            letter-spacing: -0.5px;
             margin: 0;
             padding: 0;
         }}
         </style>
         <div class="header-container">
-            <p class="title-text">Durability and residual capacity platform</p>
+            <div class="title-box">
+                <p class="title-text">Durability and Residual Capacity Platform</p>
+            </div>
         </div>
         """,
         unsafe_allow_html=True
     )
 else:
-    st.title("Durability and residual capacity platform")
-    st.warning("⚠️ Imagen 'captra.png' no encontrada.")
+    st.title("Durability and Residual Capacity Platform")
+    st.warning("⚠️ Imagen 'mondrian.png' no encontrada.")
 
 head_col1, head_col2, head_col3, head_col4 = st.columns([1, 1, 1, 1])
 with head_col1:
