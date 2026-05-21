@@ -290,7 +290,7 @@ with tab_mc:
         fig_res = go.Figure()
 
         # Color de la línea Contevect — verde oscuro
-        COLOR_CV   = "#d49b00"
+        COLOR_CV   = "#c98a00"
         COLOR_STD  = "#0055a5"
         COLOR_CONS = "#cc0000"
         LINE_W = 3  # mismo grosor para las 3 curvas
