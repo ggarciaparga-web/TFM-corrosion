@@ -34,8 +34,6 @@ def get_base64(bin_file):
 
 img_base64 = get_base64("mondrian.png")
 
-img_base64 = get_base64("mondrian.png")
-
 if img_base64:
     st.markdown(
         f"""
@@ -53,7 +51,7 @@ if img_base64:
             position: relative;
         }}
         .title-text {{
-            color: #ffffff !important; /* Usamos !important para asegurar el blanco puro ante cualquier conflicto */
+            color: #ffffff !important; 
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             font-size: 40px; 
             font-weight: 300; 
@@ -62,11 +60,16 @@ if img_base64:
             text-align: center;
             margin: 0;
             padding: 0 20px;
-            /* Eliminamos por completo el text-shadow para un acabado plano y arquitectónico */
+            border-bottom: none !important; /* Quita líneas de borde inferiores adicionales */
+        }}
+        /* --- ESTA REGLA QUITA LA LÍNEA NARANJA NATIVA DE STREAMLIT --- */
+        .header-container h1::after {{
+            display: none !important;
+            content: none !important;
         }}
         </style>
         <div class="header-container">
-            <h1 class="title-text">Residual Capacity Platform</h1>
+            <h1 class="title-text">Durability and Residual Capacity Platform</h1>
         </div>
         """,
         unsafe_allow_html=True
@@ -74,7 +77,6 @@ if img_base64:
 else:
     st.title("RESIDUAL CAPACITY PLATFORM")
     st.warning("⚠️ Imagen 'mondrian.png' no encontrada.")
-
 head_col1, head_col2, head_col3, head_col4 = st.columns([1, 1, 1, 1])
 with head_col1:
     t_global = st.number_input("Study time [years]", value=250, step=1, key="global_time")
