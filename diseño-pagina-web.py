@@ -579,7 +579,7 @@ with tab_pret:
         if v_ed_val > 0:
             fig_shear.add_hline(
                 y=v_ed_val, line_dash="dot",
-                line_color="#CC0000", line_width=1.5,
+                line_color="#4dabf7", line_width=1.5,
                 annotation_text=f"V<sub>Ed</sub> = {v_ed_val:.1f} kN",
                 annotation_position="top right",
                 annotation_font=dict(color="#CC0000")
