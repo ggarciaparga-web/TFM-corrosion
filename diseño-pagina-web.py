@@ -32,7 +32,7 @@ def get_base64(bin_file):
     except FileNotFoundError:
         return None
 
-img_base64 = get_base64("captra.png")
+img_base64 = get_base64("bauhaus.png")
 
 if img_base64:
     st.markdown(
