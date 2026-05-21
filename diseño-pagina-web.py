@@ -47,7 +47,7 @@ if img_base64:
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 200px; 
+            height: 100px; 
             position: relative;
         }}
         .title-text {{
