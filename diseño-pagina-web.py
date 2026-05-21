@@ -39,49 +39,39 @@ if img_base64:
         f"""
         <style>
         .header-container {{
-            /* Eliminamos el degradado blanco para que la imagen mantenga su fuerza */
             background-image: url("data:image/png;base64,{img_base64}");
-            padding: 40px 20px; 
-            background-position: center 50%; /* Centra la imagen vertical y horizontalmente */
+            background-position: center 55%; /* Ajuste fino para centrar la geometría */
             background-size: cover;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 30px;
+            border-radius: 0px; /* Bordes rectos para un look más arquitectónico y estructural */
+            margin-bottom: 35px;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 220px; /* Aumentamos drásticamente la altura para que se vea el cuadro */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }}
-        .title-box {{
-            /* Creamos un contenedor flotante oscuro y elegante para el texto */
-            background-color: rgba(26, 26, 26, 0.85); 
-            padding: 15px 30px;
-            border-radius: 4px;
-            border-left: 5px solid #cc0000; /* Detalle rojo vivo estilo Bauhaus/Mondrian */
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            height: 200px; /* Altura ideal y esbelta */
+            position: relative;
         }}
         .title-text {{
-            color: #ffffff; /* Texto blanco para máximo contraste */
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            font-size: 36px; /* Título considerablemente más grande */
-            font-weight: 800;
-            letter-spacing: -0.5px;
+            color: #ffffff; /* Blanco puro */
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            font-size: 40px; /* Más grande y sofisticado */
+            font-weight: 300; /* Estilo fino / Light, muy usado en estudios de arquitectura */
+            text-transform: uppercase; /* Todo en mayúsculas para darle un toque editorial */
+            letter-spacing: 4px; /* Espaciado elegante entre letras */
+            text-align: center;
             margin: 0;
-            padding: 0;
+            padding: 0 20px;
+            /* Sutil sombra paralela casi invisible solo para garantizar que se lea sobre los colores claros */
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.35); 
         }}
         </style>
         <div class="header-container">
-            <div class="title-box">
-                <p class="title-text">Durability and Residual Capacity Platform</p>
-            </div>
+            <h1 class="title-text">Durability and Residual Capacity Platform</h1>
         </div>
         """,
         unsafe_allow_html=True
     )
 else:
-    st.title("Durability and Residual Capacity Platform")
+    st.title("DURABILITY AND RESIDUAL CAPACITY PLATFORM")
     st.warning("⚠️ Imagen 'mondrian.png' no encontrada.")
 
 head_col1, head_col2, head_col3, head_col4 = st.columns([1, 1, 1, 1])
