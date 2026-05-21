@@ -631,4 +631,4 @@ with tab_pret:
         st.plotly_chart(fig_shear, use_container_width=True)
 
    
-    m4.metric("σ$_{cp}$ at t=0", f"{df_cor['sigma_cp'].iloc[0]:.2f} MPa")
+    
