@@ -381,6 +381,9 @@ with tab_mc:
 # ══════════════════════════════════════════════════════════════════════════════
 # PESTAÑA 3: PRETENSADO  — sustituye todo el bloque "with tab_pret:"
 # ══════════════════════════════════════════════════════════════════════════════
+# ==========================================
+# PESTAÑA 3: PRETENSADO
+# ==========================================
 with tab_pret:
     t_ini_session = st.session_state.get('t_ini_res', 0.0)
     current_alpha = st.session_state.get('alpha', 2.0)
@@ -405,17 +408,17 @@ with tab_pret:
         ae_p3_val = st.number_input("$A_e$ [mm]", value=92.0, key="ae_p3_key")
         fpy_p3_val = st.number_input("$f_{py}$ [MPa]", value=1860, key="fpy_p3_key")
     with c6:
-        fyk_p  = st.number_input("$f_{yk}$", value=fyk, key="fyk_p3")
-        fck_p  = st.number_input("$f_{ck}$ [MPa]", value=fck_val, key="fck_p3")
+        fyk_p = st.number_input("$f_{yk}$", value=fyk, key="fyk_p3")
+        fck_p = st.number_input("$f_{ck}$ [MPa]", value=fck_val, key="fck_p3")
 
-    # ── Inputs adicionales para cortante (nuevos) ─────────────────────────────
+    # ── Inputs cortante ───────────────────────────────────────────────────────
     st.markdown("**Shear inputs**")
     cv1, cv2, cv3 = st.columns([1, 1, 1])
     with cv1:
-        v_ed_val  = st.number_input("$V_{Ed}$ [kN]",  value=0.0, key="ved_p3")
-        m_ed_val  = st.number_input("$M_{Ed}$ [kNm]", value=0.0, key="med_p3")
+        v_ed_val = st.number_input("$V_{Ed}$ [kN]", value=0.0, key="ved_p3")
+        m_ed_val = st.number_input("$M_{Ed}$ [kNm]", value=0.0, key="med_p3")
     with cv2:
-        gamma_v_val = st.number_input(r"$\gamma_V$",  value=1.4, key="gv_p3")
+        gamma_v_val = st.number_input(r"$\gamma_V$", value=1.4, key="gv_p3")
         d_lower_val = st.number_input("$d_{lower}$ [mm]", value=12.0, key="dl_p3")
     with cv3:
         st.info(
@@ -423,7 +426,7 @@ with tab_pret:
             "(conservative shear-span = dp)."
         )
 
-    # ── Visualización de la sección ───────────────────────────────────────────
+    # ── Visualización sección ─────────────────────────────────────────────────
     with c_viz:
         fig_sec_p = go.Figure()
         fig_sec_p.add_shape(
@@ -462,11 +465,7 @@ with tab_pret:
 
     st.divider()
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # CÁLCULOS
-    # ══════════════════════════════════════════════════════════════════════════
-
-    # — Tensiones de pretensado (módulo existente) ——————————————————————————
+    # ── Cálculos ──────────────────────────────────────────────────────────────
     params_p3 = {
         't_global': t_global, 't_ini': t_ini_session,
         'h': h_p, 'bw': b_p,
@@ -477,42 +476,37 @@ with tab_pret:
     res_tensiones = calc_pre.calcular_tensiones_pretensado(params_p3)
     df_t = pd.DataFrame(res_tensiones)
 
-    # — Cortante Vrd (módulo nuevo) ──────────────────────────────────────────
     params_cor = {
-        't_global' : t_global,
-        't_ini'    : t_ini_session,
-        'h'        : h_p,
-        'bw'       : b_p,
-        'c_bot'    : ri_p,
-        'n_p'      : np_p,
-        'phi_p0'   : phi_p_val,
-        'fpy'      : fpy_p3_val,
-        'Ae'       : ae_p3_val,
-        'fck'      : fck_p,
-        'icorr'    : icorr_val,
-        'alpha'    : current_alpha,
-        'v_ed'     : v_ed_val,
-        'm_ed'     : m_ed_val,
-        'gamma_v'  : gamma_v_val,
-        'd_lower'  : d_lower_val,
+        't_global': t_global,
+        't_ini':    t_ini_session,
+        'h':        h_p,
+        'bw':       b_p,
+        'c_bot':    ri_p,
+        'n_p':      np_p,
+        'phi_p0':   phi_p_val,
+        'fpy':      fpy_p3_val,
+        'Ae':       ae_p3_val,
+        'fck':      fck_p,
+        'icorr':    icorr_val,
+        'alpha':    current_alpha,
+        'v_ed':     v_ed_val,
+        'm_ed':     m_ed_val,
+        'gamma_v':  gamma_v_val,
+        'd_lower':  d_lower_val,
     }
     res_cor = calc_cor.calcular_cortante_pretensado(params_cor)
     df_cor  = pd.DataFrame(res_cor)
 
-    # — Umbral fin de vida ───────────────────────────────────────────────────
-    umbral_px_p3   = 0.05 if atk_type == "Carbonation" else 0.5
-    idx_life_p3    = df_t[df_t['px'] >= umbral_px_p3]
-    t_life_p3      = idx_life_p3['t'].iloc[0] if not idx_life_p3.empty else None
+    umbral_px_p3 = 0.05 if atk_type == "Carbonation" else 0.5
+    idx_life_p3  = df_t[df_t['px'] >= umbral_px_p3]
+    t_life_p3    = idx_life_p3['t'].iloc[0] if not idx_life_p3.empty else None
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # GRÁFICAS — dos columnas: Tensiones | Cortante (Vrd + envolventes τ)
-    # ══════════════════════════════════════════════════════════════════════════
+    # ── Gráficas ──────────────────────────────────────────────────────────────
     col_stress, col_shear = st.columns(2)
 
-    # ── Columna izquierda: Tensiones de pretensado ────────────────────────────
+    # — Tensiones ──────────────────────────────────────────────────────────────
     with col_stress:
         st.subheader("Prestress evolution")
-
         fig_stresses = go.Figure()
         fig_stresses.add_trace(go.Scatter(
             x=df_t['t'], y=df_t['sigma_inferior'],
@@ -526,7 +520,6 @@ with tab_pret:
             line=dict(color='#A60628', width=3),
             hovertemplate="%{y:.1f} MPa"
         ))
-
         fig_stresses.add_vline(
             x=t_ini_session, line_dash="dash",
             line_color="#888888", line_width=1.5, opacity=0.8,
@@ -556,16 +549,12 @@ with tab_pret:
         )
         st.plotly_chart(fig_stresses, use_container_width=True)
 
-    # ── Columna derecha: Cortante — VRd y componentes τ ───────────────────────
-    # ── Columna derecha: Cortante doble eje Y ────────────────────────────────
+    # — Cortante doble eje Y ───────────────────────────────────────────────────
     with col_shear:
         st.subheader("Shear capacity (V$_{Rd}$)")
-
         fig_shear = go.Figure()
 
-        # ── Eje izquierdo (kN) ────────────────────────────────────────────────
-
-        # VRd — azul oscuro, línea principal
+        # Eje izquierdo — kN
         fig_shear.add_trace(go.Scatter(
             x=df_cor['t'], y=df_cor['vrd'],
             name="V<sub>Rd</sub> [kN]",
@@ -573,8 +562,6 @@ with tab_pret:
             line=dict(color='#1f4e79', width=3),
             hovertemplate="%{y:.2f} kN"
         ))
-
-        # VEd — rojo discontinuo (solo si el usuario lo introduce)
         if v_ed_val > 0:
             fig_shear.add_trace(go.Scatter(
                 x=[df_cor['t'].iloc[0], df_cor['t'].iloc[-1]],
@@ -585,9 +572,7 @@ with tab_pret:
                 hovertemplate=f"{v_ed_val:.1f} kN"
             ))
 
-        # ── Eje derecho (MPa) ─────────────────────────────────────────────────
-
-        # σ_cp — naranja, tensión media de compresión por pretensado
+        # Eje derecho — MPa
         fig_shear.add_trace(go.Scatter(
             x=df_cor['t'], y=df_cor['sigma_cp'],
             name="σ<sub>cp</sub> [MPa]",
@@ -595,8 +580,6 @@ with tab_pret:
             line=dict(color='#e17000', width=2, dash='dash'),
             hovertemplate="%{y:.3f} MPa"
         ))
-
-        # τRd,c0 — verde, contribución resistente del hormigón
         fig_shear.add_trace(go.Scatter(
             x=df_cor['t'], y=df_cor['tau_c0'],
             name="τ<sub>Rd,c0</sub> [MPa]",
@@ -605,7 +588,6 @@ with tab_pret:
             hovertemplate="%{y:.3f} MPa"
         ))
 
-        # ── Líneas verticales inicio / fin de vida ────────────────────────────
         fig_shear.add_vline(
             x=t_ini_session, line_dash="dash",
             line_color="#888888", line_width=1.5, opacity=0.8,
@@ -628,26 +610,22 @@ with tab_pret:
                 )
             )
 
-        # ── Layout doble eje ──────────────────────────────────────────────────
         fig_shear.update_layout(
             hovermode="x unified",
             template="plotly_white",
             height=420,
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02,
-                xanchor="right", x=1
-            ),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             xaxis=dict(title="Time [years]", rangemode="tozero"),
             yaxis=dict(
                 title="Shear [kN]",
-                titlefont_color='#1f4e79',
-                tickfont_color='#1f4e79',
+                titlefont=dict(color='#1f4e79'),
+                tickfont=dict(color='#1f4e79'),
                 rangemode="tozero",
             ),
             yaxis2=dict(
                 title="Stress [MPa]",
-                titlefont_color='#e17000',
-                tickfont_color='#e17000',
+                titlefont=dict(color='#e17000'),
+                tickfont=dict(color='#e17000'),
                 anchor="x",
                 overlaying="y",
                 side="right",
@@ -661,23 +639,17 @@ with tab_pret:
     st.divider()
     m1, m2, m3, m4 = st.columns(4)
 
-    vrd_0   = df_cor['vrd'].iloc[0]
-    vrd_end = df_cor['vrd'].iloc[-1]
+    vrd_0    = df_cor['vrd'].iloc[0]
+    vrd_end  = df_cor['vrd'].iloc[-1]
     vrd_loss = (vrd_0 - vrd_end) / vrd_0 * 100 if vrd_0 > 0 else 0
 
     m1.metric("V$_{Rd}$ at t=0", f"{vrd_0:.1f} kN")
     m2.metric(f"V$_{{Rd}}$ at t={int(t_global)} y", f"{vrd_end:.1f} kN",
               delta=f"-{vrd_loss:.1f}%", delta_color="inverse")
-
     if v_ed_val > 0:
-        # Tiempo en que VRd < VEd
         idx_fail = df_cor[df_cor['vrd'] < v_ed_val]
         t_fail   = idx_fail['t'].iloc[0] if not idx_fail.empty else None
-        if t_fail:
-            m3.metric("Shear failure at", f"{t_fail:.0f} years")
-        else:
-            m3.metric("Shear failure", "Not reached")
+        m3.metric("Shear failure at", f"{t_fail:.0f} years" if t_fail else "Not reached")
     else:
         m3.metric("τ$_{Rd,c0}$ at t=0", f"{df_cor['tau_c0'].iloc[0]:.3f} MPa")
-
     m4.metric("σ$_{cp}$ at t=0", f"{df_cor['sigma_cp'].iloc[0]:.2f} MPa")
