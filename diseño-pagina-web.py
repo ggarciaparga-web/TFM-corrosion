@@ -162,7 +162,7 @@ with tab_ini:
             fig_tuutti = go.Figure()
             fig_tuutti.add_trace(go.Scatter(
                 x=t_i, y=px_vals, 
-                line=dict(color='#228B22', width=3), 
+                line=dict(color='#cc0000', width=3), 
                 name="Penetration $P_x$"
             ))
             fig_tuutti.update_layout(
@@ -180,12 +180,12 @@ with tab_ini:
             fig_ini = go.Figure()
             fig_ini.add_trace(go.Scatter(
                 x=t_i, y=y_vals, fill='tozeroy', 
-                line=dict(color='#e17000', width=3), 
+                line=dict(color='#1f4e79', width=3), 
                 name="Progress"
             ))
             fig_ini.add_trace(go.Scatter(
                 x=t_i, y=[limit_val]*len(t_i), 
-                line=dict(color='black', dash='dash'), 
+                line=dict(color='#adb5bd', dash='dash'), 
                 name="Limit"
             ))
             fig_ini.update_layout(
