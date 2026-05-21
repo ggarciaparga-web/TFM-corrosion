@@ -34,34 +34,35 @@ def get_base64(bin_file):
 
 img_base64 = get_base64("mondrian.png")
 
+img_base64 = get_base64("mondrian.png")
+
 if img_base64:
     st.markdown(
         f"""
         <style>
         .header-container {{
             background-image: url("data:image/png;base64,{img_base64}");
-            background-position: center 55%; /* Ajuste fino para centrar la geometría */
+            background-position: center 55%; 
             background-size: cover;
-            border-radius: 0px; /* Bordes rectos para un look más arquitectónico y estructural */
+            border-radius: 0px; 
             margin-bottom: 35px;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 200px; /* Altura ideal y esbelta */
+            height: 200px; 
             position: relative;
         }}
         .title-text {{
-            color: #ffffff; /* Blanco puro */
+            color: #ffffff !important; /* Usamos !important para asegurar el blanco puro ante cualquier conflicto */
             font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-            font-size: 40px; /* Más grande y sofisticado */
-            font-weight: 300; /* Estilo fino / Light, muy usado en estudios de arquitectura */
-            text-transform: uppercase; /* Todo en mayúsculas para darle un toque editorial */
-            letter-spacing: 4px; /* Espaciado elegante entre letras */
+            font-size: 40px; 
+            font-weight: 300; 
+            text-transform: uppercase; 
+            letter-spacing: 4px; 
             text-align: center;
             margin: 0;
             padding: 0 20px;
-            /* Sutil sombra paralela casi invisible solo para garantizar que se lea sobre los colores claros */
-            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.35); 
+            /* Eliminamos por completo el text-shadow para un acabado plano y arquitectónico */
         }}
         </style>
         <div class="header-container">
@@ -71,7 +72,7 @@ if img_base64:
         unsafe_allow_html=True
     )
 else:
-    st.title("DURABILITY AND RESIDUAL CAPACITY PLATFORM")
+    st.title("RESIDUAL CAPACITY PLATFORM")
     st.warning("⚠️ Imagen 'mondrian.png' no encontrada.")
 
 head_col1, head_col2, head_col3, head_col4 = st.columns([1, 1, 1, 1])
