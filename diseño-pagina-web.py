@@ -637,26 +637,23 @@ with tab_pret:
                 orientation="h", yanchor="bottom", y=1.02,
                 xanchor="right", x=1
             ),
-            xaxis=dict(
-                title="Time [years]",
-                rangemode="tozero"
-            ),
+            xaxis=dict(title="Time [years]", rangemode="tozero"),
             yaxis=dict(
                 title="Shear [kN]",
-                titlefont=dict(color='#1f4e79'),
-                tickfont=dict(color='#1f4e79'),
+                titlefont_color='#1f4e79',
+                tickfont_color='#1f4e79',
                 rangemode="tozero",
-                side='left'
             ),
             yaxis2=dict(
                 title="Stress [MPa]",
-                titlefont=dict(color='#e17000'),
-                tickfont=dict(color='#e17000'),
+                titlefont_color='#e17000',
+                tickfont_color='#e17000',
+                anchor="x",
+                overlaying="y",
+                side="right",
                 rangemode="tozero",
-                overlaying='y',
-                side='right',
-                showgrid=False        # evita doble rejilla
-            )
+                showgrid=False,
+            ),
         )
         st.plotly_chart(fig_shear, use_container_width=True)
 
