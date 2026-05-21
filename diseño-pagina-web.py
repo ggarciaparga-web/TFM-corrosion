@@ -426,11 +426,7 @@ with tab_pret:
     with cv2:
         gamma_v_val = st.number_input(r"$\gamma_V$",  value=1.4, key="gv_p3")
         d_lower_val = st.number_input("$d_{lower}$ [mm]", value=12.0, key="dl_p3")
-    with cv3:
-        st.info(
-            "ℹ️ Set $V_{Ed}=0$ to compute VRd with zero applied shear "
-            "(conservative shear-span = dp)."
-        )
+    
 
     # ── Visualización de la sección ───────────────────────────────────────────
     with c_viz:
