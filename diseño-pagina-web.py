@@ -592,7 +592,7 @@ with tab_pret:
         if v_ed_val > 0:
             fig_shear.add_hline(
                 y=v_ed_val, line_dash="dot",
-                line_color="#e0e0e0", line_width=1.5,
+                line_color="#CC0000", line_width=1.5,
                 annotation_text=f"V<sub>Ed</sub> = {v_ed_val:.1f} kN",
                 annotation_position="top right",
                 annotation_font=dict(color="#CC0000")
@@ -613,7 +613,7 @@ with tab_pret:
         if t_life_p3:
             fig_shear.add_vline(
                 x=t_life_p3, line_dash="dot",
-                line_color="#d49b00", line_width=1.5,
+                line_color="#CC0000", line_width=1.5,
                 annotation=dict(
                     text=f"<b>End of Life<br>{t_life_p3:.1f} yrs</b>",
                     font=dict(size=11, color="#CC0000"),
