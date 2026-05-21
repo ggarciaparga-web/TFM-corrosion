@@ -541,7 +541,7 @@ with tab_pret:
         fig_stresses.add_trace(go.Scatter(
             x=df_t['t'], y=df_t['sigma_superior'],
             name="σ Top",
-            line=dict(color='#d49b00', width=3),
+            line=dict(color='#0055a5', width=3),
             hovertemplate="%{y:.1f} MPa"
         ))
 
@@ -592,7 +592,7 @@ with tab_pret:
         if v_ed_val > 0:
             fig_shear.add_hline(
                 y=v_ed_val, line_dash="dot",
-                line_color="#4dabf7", line_width=1.5,
+                line_color="#d49b00", line_width=1.5,
                 annotation_text=f"V<sub>Ed</sub> = {v_ed_val:.1f} kN",
                 annotation_position="top right",
                 annotation_font=dict(color="#CC0000")
