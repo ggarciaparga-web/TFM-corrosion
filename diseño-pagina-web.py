@@ -290,7 +290,7 @@ with tab_mc:
         fig_res = go.Figure()
 
         # Color de la línea Contevect — verde oscuro
-        COLOR_CV   = "#c98a00"
+        COLOR_CV   = "#d49b00"
         COLOR_STD  = "#0055a5"
         COLOR_CONS = "#cc0000"
         LINE_W = 3  # mismo grosor para las 3 curvas
@@ -541,7 +541,7 @@ with tab_pret:
         fig_stresses.add_trace(go.Scatter(
             x=df_t['t'], y=df_t['sigma_superior'],
             name="σ Top",
-            line=dict(color='#A60628', width=3),
+            line=dict(color='#d49b00', width=3),
             hovertemplate="%{y:.1f} MPa"
         ))
 
