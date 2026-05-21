@@ -66,7 +66,7 @@ if img_base64:
         }}
         </style>
         <div class="header-container">
-            <h1 class="title-text">Durability and Residual Capacity Platform</h1>
+            <h1 class="title-text">Residual Capacity Platform</h1>
         </div>
         """,
         unsafe_allow_html=True
