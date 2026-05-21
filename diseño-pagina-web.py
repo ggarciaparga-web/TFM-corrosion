@@ -423,7 +423,7 @@ with tab_pret:
 
     # ── Inputs adicionales para cortante (nuevos) ─────────────────────────────
     # Reemplazamos el texto en negrita por el expansor desplegable
-    with st.expander("📊 Shear inputs", expanded=False):
+    with st.expander("Shear inputs", expanded=False):
         cv1, cv2, cv3 = st.columns([1, 1, 1])
     
         with cv1:
