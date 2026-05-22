@@ -541,7 +541,7 @@ with tab_pret:
         fig_stresses.add_trace(go.Scatter(
             x=df_t['t'], y=df_t['sigma_superior'],
             name="σ Top",
-            line=dict(color='#0055a5', width=3),
+            line=dict(color='#2c2c2a', width=3),
             hovertemplate="%{y:.1f} MPa"
         ))
 
