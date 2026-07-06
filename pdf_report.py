@@ -318,9 +318,9 @@ if "alpha"       not in st.session_state: st.session_state["alpha"]       = 2.0
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab_ini, tab_mc, tab_pret = st.tabs([
-    "📐  Initiation Period",
-    "📊  Residual Capacity",
-    "🔩  Prestressed Section",
+    " Initiation Period",
+    " Residual Capacity",
+    " Prestressed Section",
 ])
 
 # ── Shared plot style helpers ─────────────────────────────────────────────────
