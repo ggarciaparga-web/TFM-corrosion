@@ -631,39 +631,43 @@ with tab_pret:
         )
         st.plotly_chart(fig_shear, use_container_width=True)
 #si no funciona borro a partir de aqui
-# ── Rellenar estado para el PDF ───────────────────────────────────────────────
+
+
+# Línea 12 — import correcto
+from pdf_report import render_pdf_button
+
+# ... todo tu código de tabs ...
+
+# ── AL FINAL del script, fuera de todos los with tab_... ──────────────────────
+pdf_state = {}
 pdf_state.update({
     # Globales
     "t_global":     t_global,
     "icorr_val":    icorr_val,
-    "attack_type":  attack_type if 'attack_type' in dir() else st.session_state.get('attack_type','Carbonation'),
+    "attack_type":  attack_type if 'attack_type' in dir() else st.session_state.get('attack_type', 'Carbonation'),
     "t_ini_calc":   st.session_state.get('t_ini_res', 0.0),
-
     # Pestaña 1
-    "fig_tuutti":   fig_tuutti  if 'fig_tuutti' in dir() else None,
-    "fig_ini":      fig_ini     if 'fig_ini'    in dir() else None,
-
+    "fig_tuutti":   fig_tuutti   if 'fig_tuutti'   in dir() else None,
+    "fig_ini":      fig_ini      if 'fig_ini'       in dir() else None,
     # Pestaña 2
-    "fig_res":      fig_res     if 'fig_res'    in dir() else None,
-    "df_criticos":  df_criticos if 'df_criticos' in dir() else None,
+    "fig_res":      fig_res      if 'fig_res'       in dir() else None,
+    "df_criticos":  df_criticos  if 'df_criticos'   in dir() else None,
     "b_val": b_val, "h_val": h_val,
     "fck_val": fck_val, "fyk": fyk,
     "n_sup": n_sup, "p_sup": p_sup,
     "n_inf": n_inf, "phi_inf_0": phi_inf_0,
-    "t_life":       t_life      if 't_life'     in dir() else None,
-
+    "t_life":       t_life       if 't_life'        in dir() else None,
     # Pestaña 3
-    "fig_stresses": fig_stresses if 'fig_stresses' in dir() else None,
-    "fig_shear":    fig_shear    if 'fig_shear'    in dir() else None,
-    "df_t":         df_t         if 'df_t'         in dir() else None,
+    "fig_stresses": fig_stresses if 'fig_stresses'  in dir() else None,
+    "fig_shear":    fig_shear    if 'fig_shear'     in dir() else None,
+    "df_t":         df_t         if 'df_t'          in dir() else None,
     "df_cor":       df_cor       if 'df_cor'        in dir() else None,
     "h_p": h_p, "b_p": b_p,
     "phi_p_val": phi_p_val, "np_p": np_p,
     "fpy_p3_val": fpy_p3_val, "ae_p3_val": ae_p3_val,
-    "t_life_p3":    t_life_p3   if 't_life_p3'  in dir() else None,
+    "t_life_p3":    t_life_p3    if 't_life_p3'     in dir() else None,
 })
 
-# ── Botón PDF flotante (esquina superior derecha) ─────────────────────────────
 render_pdf_button(pdf_state)
 
    
