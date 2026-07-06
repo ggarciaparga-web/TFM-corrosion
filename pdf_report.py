@@ -19,6 +19,45 @@ from reportlab.platypus import (
 )
 from reportlab.platypus import Image as RLImage
 from reportlab.pdfgen import canvas as rl_canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+# ── Register a Unicode-capable font for body text ────────────────────────────
+# ReportLab's built-in Helvetica is Latin-1 only — subscript Unicode chars
+# (₀₁₂…ₐₑᵢ…) render as dark boxes with it.  We register DejaVu Sans which
+# ships with most Python environments (matplotlib bundles it) and covers the
+# full Unicode Latin Extended block including all subscript codepoints we use.
+import os as _os, sys as _sys
+
+def _register_unicode_font() -> str:
+    """Try to register DejaVuSans; return font name to use in styles."""
+    candidates = [
+        # matplotlib bundles DejaVu fonts — most reliable source
+        _os.path.join(_os.path.dirname(_sys.modules.get("matplotlib", type("", (), {"__file__": ""})).__file__ or ""),
+                      "mpl-data", "fonts", "ttf", "DejaVuSans.ttf"),
+        # Common Linux system paths
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        # macOS / Homebrew
+        "/opt/homebrew/share/fonts/dejavu-fonts/DejaVuSans.ttf",
+        "/Library/Fonts/DejaVuSans.ttf",
+    ]
+    for path in candidates:
+        if path and _os.path.isfile(path):
+            try:
+                pdfmetrics.registerFont(TTFont("DejaVuSans", path))
+                pdfmetrics.registerFont(TTFont("DejaVuSans-Bold",
+                    path.replace("DejaVuSans.ttf", "DejaVuSans-Bold.ttf")
+                    if _os.path.isfile(path.replace("DejaVuSans.ttf", "DejaVuSans-Bold.ttf"))
+                    else path))
+                return "DejaVuSans"
+            except Exception:
+                continue
+    # Fallback: Helvetica (subscripts may show as boxes for unsupported chars)
+    return "Helvetica"
+
+_BODY_FONT      = _register_unicode_font()
+_BODY_FONT_BOLD = _BODY_FONT + "-Bold" if _BODY_FONT != "Helvetica" else "Helvetica-Bold"
 
 # ── Colour palette ────────────────────────────────────────────────────────────
 NAVY   = colors.HexColor("#1A2B3C")
@@ -33,13 +72,22 @@ PAGE_W, PAGE_H = A4
 MARGIN = 2.0 * cm
 
 # ── Unicode subscript helper (mirrors app.py) ─────────────────────────────────
+# CRITICAL: Only use subscript codepoints that Helvetica (ReportLab's built-in
+# font) can render. Characters outside Latin-1 / Windows-1252 will appear as
+# dark boxes. The safe set is: digits ₀–₉ and letters ₐ ₑ ᵢ ₙ ₒ ᵣ ₛ ᵤ ᵥ ₓ.
+# All other suffix characters fall back to their normal (non-subscript) form.
 _SUB_MAP = str.maketrans(
-    "0123456789abcdefghijklmnopqrstuvwxyz",
-    "₀₁₂₃₄₅₆₇₈₉ₐᵦ꜀ᵈₑ꜁ᵍₕᵢⱼₖₗₘₙₒₚ꜀ᵣₛₜᵤᵥ𝓌ₓᵧ𝓏",
+    "0123456789aeinorsuv x",
+    "₀₁₂₃₄₅₆₇₈₉ₐₑᵢₙₒᵣₛᵤᵥ ₓ",
 )
 
 def fmt_var(label: str) -> str:
-    """Convert 'X-i' style labels to 'Xᵢ' using Unicode subscripts."""
+    """Convert 'X-i' style labels to 'Xᵢ' using safe Unicode subscripts.
+
+    Only digits and the letters a, e, i, n, o, r, s, u, v, x have proper
+    Unicode subscript codepoints supported by ReportLab's Helvetica font.
+    All other suffix characters are left as normal text to avoid dark boxes.
+    """
     def _replace(m):
         base, sub = m.group(1), m.group(2)
         return base + sub.translate(_SUB_MAP)
@@ -277,27 +325,27 @@ def _build_styles() -> dict[str, ParagraphStyle]:
         "body": ParagraphStyle(
             "body", parent=base["Normal"],
             fontSize=9, leading=13, textColor=DGRAY,
-            fontName="Helvetica",
+            fontName=_BODY_FONT,
         ),
         "kv_key": ParagraphStyle(
             "kv_key", parent=base["Normal"],
             fontSize=8, leading=11, textColor=DGRAY,
-            fontName="Helvetica-Bold",
+            fontName=_BODY_FONT_BOLD,
         ),
         "kv_val": ParagraphStyle(
             "kv_val", parent=base["Normal"],
             fontSize=8, leading=11, textColor=NAVY,
-            fontName="Helvetica",
+            fontName=_BODY_FONT,
         ),
         "caption": ParagraphStyle(
             "caption", parent=base["Normal"],
             fontSize=8, leading=11, textColor=DGRAY,
-            fontName="Helvetica-Oblique", alignment=TA_CENTER,
+            fontName=_BODY_FONT, alignment=TA_CENTER,
         ),
         "footer": ParagraphStyle(
             "footer", parent=base["Normal"],
             fontSize=7, leading=10, textColor=colors.HexColor("#aaaaaa"),
-            fontName="Helvetica", alignment=TA_CENTER,
+            fontName=_BODY_FONT, alignment=TA_CENTER,
         ),
     }
 
