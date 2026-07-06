@@ -62,26 +62,180 @@ def fmt_var(label: str) -> str:
     return re.sub(r'([A-Za-z_]+)-([0-9a-z]+)', _replace, label)
 
 
-# ── Plotly → PNG bytes ────────────────────────────────────────────────────────
+# ── Plotly → PNG bytes (multi-engine, no kaleido required) ───────────────────
 def _fig_to_png(fig, width_px: int = 900, height_px: int = 400) -> bytes | None:
     """
-    Convert a Plotly figure to PNG bytes using kaleido.
+    Convert a Plotly figure to PNG bytes.
 
-    Returns None if kaleido is not installed or conversion fails, so the
-    caller can insert a placeholder instead of crashing.
+    Tries three engines in order:
+      1. kaleido  (plotly.io.to_image)  — best quality, optional dependency
+      2. orca     (plotly.io.to_image with orca engine)
+      3. matplotlib — pure-Python fallback, always available, redraws the
+         traces from the Plotly figure dict so no extra install is needed.
+
+    Returns None only if all three engines fail.
     """
+    # ── Engine 1: kaleido ────────────────────────────────────────────────────
     try:
-        import plotly.io as pio  # noqa: PLC0415
+        import plotly.io as pio
         png_bytes = pio.to_image(fig, format="png", width=width_px, height=height_px, scale=2)
-        return png_bytes
+        if png_bytes:
+            return png_bytes
+    except Exception:
+        pass
+
+    # ── Engine 2: orca ───────────────────────────────────────────────────────
+    try:
+        import plotly.io as pio
+        png_bytes = pio.to_image(fig, format="png", width=width_px, height=height_px,
+                                  engine="orca")
+        if png_bytes:
+            return png_bytes
+    except Exception:
+        pass
+
+    # ── Engine 3: matplotlib fallback ────────────────────────────────────────
+    try:
+        return _fig_to_png_matplotlib(fig, width_px, height_px)
     except Exception:
         return None
+
+
+# Colour cycle used by the matplotlib fallback (mirrors the app palette)
+_MPL_COLORS = ["#e17000", "#1f4e79", "#2c2c2a", "#888888",
+               "#4caf50", "#9c27b0", "#00bcd4", "#f44336"]
+
+def _fig_to_png_matplotlib(fig, width_px: int = 900, height_px: int = 400) -> bytes | None:
+    """
+    Pure-matplotlib re-render of a Plotly figure.
+
+    Iterates over fig.data traces and draws lines / scatter markers using
+    matplotlib.  Axis titles, legend labels and vertical lines (shapes /
+    annotations) are also reproduced so the PDF charts look clean even
+    without kaleido.
+    """
+    import matplotlib  # noqa: PLC0415
+    matplotlib.use("Agg")          # non-interactive backend, safe in any env
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    import numpy as np
+
+    dpi = 150
+    fig_w = width_px  / dpi
+    fig_h = height_px / dpi
+
+    mpl_fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=dpi)
+
+    # ── Style ────────────────────────────────────────────────────────────────
+    ax.set_facecolor("#ffffff")
+    mpl_fig.patch.set_facecolor("#ffffff")
+    ax.grid(True, color="#ebebeb", linewidth=0.8, zorder=0)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.spines[["left", "bottom"]].set_color("#cccccc")
+    ax.tick_params(colors="#555555", labelsize=7)
+
+    legend_handles = []
+    color_idx = 0
+
+    # ── Traces ───────────────────────────────────────────────────────────────
+    for trace in fig.data:
+        # Resolve colour: prefer the trace's own colour, else cycle
+        raw_color = None
+        if hasattr(trace, "line") and trace.line and trace.line.color:
+            raw_color = trace.line.color
+        elif hasattr(trace, "marker") and trace.marker and trace.marker.color:
+            c = trace.marker.color
+            if isinstance(c, str):
+                raw_color = c
+        color = raw_color or _MPL_COLORS[color_idx % len(_MPL_COLORS)]
+        color_idx += 1
+
+        x = list(trace.x) if trace.x is not None else []
+        y = list(trace.y) if trace.y is not None else []
+        if not x or not y:
+            continue
+
+        trace_type = type(trace).__name__.lower()
+        label = str(trace.name) if trace.name else None
+
+        if "scatter" in trace_type:
+            mode = getattr(trace, "mode", None) or "lines"
+            ls_map = {"dash": "--", "dot": ":", "dashdot": "-."}
+            lw = 1.8
+            ls = "-"
+            if hasattr(trace, "line") and trace.line:
+                if trace.line.dash:
+                    ls = ls_map.get(trace.line.dash, "-")
+                if trace.line.width:
+                    lw = float(trace.line.width) * 0.7
+
+            if "lines" in mode:
+                line_obj, = ax.plot(x, y, color=color, linewidth=lw,
+                                    linestyle=ls, zorder=3)
+                if label:
+                    legend_handles.append(
+                        mpatches.Patch(color=color, label=label))
+
+            if "markers" in mode:
+                ms = 5
+                if hasattr(trace, "marker") and trace.marker and trace.marker.size:
+                    sz = trace.marker.size
+                    ms = float(sz) * 0.5 if not isinstance(sz, (list, tuple)) else 5
+                ax.scatter(x, y, color=color, s=ms**2, zorder=4)
+                if label and "lines" not in mode:
+                    legend_handles.append(
+                        mpatches.Patch(color=color, label=label))
+
+            # Fill under line
+            if hasattr(trace, "fill") and trace.fill in ("tozeroy", "tonexty"):
+                ax.fill_between(x, y, alpha=0.10, color=color, zorder=1)
+
+        elif "bar" in trace_type:
+            ax.bar(x, y, color=color, alpha=0.85, zorder=3)
+            if label:
+                legend_handles.append(mpatches.Patch(color=color, label=label))
+
+    # ── Vertical lines from fig.layout.shapes ────────────────────────────────
+    layout = fig.layout
+    if layout.shapes:
+        for shape in layout.shapes:
+            if getattr(shape, "type", None) == "line":
+                if shape.x0 == shape.x1:          # vertical
+                    sc = getattr(shape, "line", None)
+                    lc = (sc.color if sc and sc.color else "#888888")
+                    ld = (sc.dash  if sc and sc.dash  else "solid")
+                    ls_map = {"dash": "--", "dot": ":", "dashdot": "-."}
+                    ax.axvline(x=shape.x0, color=lc,
+                               linestyle=ls_map.get(ld, "--"),
+                               linewidth=1.2, alpha=0.8, zorder=5)
+
+    # ── Axis labels ──────────────────────────────────────────────────────────
+    font_kw = dict(fontsize=8, color="#333333")
+    if layout.xaxis and layout.xaxis.title and layout.xaxis.title.text:
+        ax.set_xlabel(layout.xaxis.title.text, **font_kw)
+    if layout.yaxis and layout.yaxis.title and layout.yaxis.title.text:
+        ax.set_ylabel(layout.yaxis.title.text, **font_kw)
+    if layout.title and layout.title.text:
+        ax.set_title(layout.title.text, fontsize=9, color="#1f4e79", pad=6)
+
+    # ── Legend ───────────────────────────────────────────────────────────────
+    if legend_handles:
+        ax.legend(handles=legend_handles, fontsize=7, framealpha=0.85,
+                  loc="upper right", edgecolor="#dddddd")
+
+    mpl_fig.tight_layout(pad=0.6)
+
+    buf = io.BytesIO()
+    mpl_fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+    plt.close(mpl_fig)
+    buf.seek(0)
+    return buf.read()
 
 
 def _rl_image(fig, max_width: float, max_height: float) -> RLImage | Paragraph | None:
     """
     Return a ReportLab Image flowable from a Plotly figure, scaled to fit.
-    Falls back to a styled Paragraph if rendering fails.
+    Falls back to a styled Paragraph only if ALL rendering engines fail.
     """
     if fig is None:
         return None
@@ -94,7 +248,7 @@ def _rl_image(fig, max_width: float, max_height: float) -> RLImage | Paragraph |
             textColor=ORANGE, fontSize=9, leading=12,
         )
         return Paragraph(
-            "⚠ Chart could not be rendered (kaleido not available).",
+            "⚠ Chart could not be rendered.",
             warn_style,
         )
 
