@@ -63,7 +63,7 @@ html, body, [class*="css"] {
 
 /* ── Header ── */
 .rcp-header {
-    background: linear-gradient(135deg, #0f1e2d 0%, #1a3a5c 60%, #1f4e79 100%);
+    background: linear-gradient(135deg, #002D62 0%, #005A9C 60%, #007BC0 100%);
     padding: 28px 40px 22px 40px;
     margin: -1rem -1rem 0 -1rem;
     border-bottom: 4px solid #e17000;
@@ -82,7 +82,7 @@ html, body, [class*="css"] {
 }
 .rcp-header-sub {
     font-size: 11px;
-    color: #90b8d8;
+    color: #a8d4f0;
     letter-spacing: 2.5px;
     text-transform: uppercase;
     margin-top: 5px;
@@ -111,21 +111,21 @@ html, body, [class*="css"] {
 
 /* ── Info banner ── */
 .info-banner {
-    background: #eef4fb;
-    border-left: 4px solid #1f4e79;
+    background: #e6f2fb;
+    border-left: 4px solid #005A9C;
     padding: 9px 16px;
     border-radius: 0 6px 6px 0;
     font-size: 12px;
-    color: #1f4e79;
+    color: #005A9C;
     margin-bottom: 14px;
-    box-shadow: 0 1px 4px rgba(31,78,121,0.08);
+    box-shadow: 0 1px 4px rgba(0,90,156,0.08);
 }
 
 /* ── Section title ── */
 .section-title {
     font-size: 11.5px;
     font-weight: 700;
-    color: #1f4e79;
+    color: #005A9C;
     text-transform: uppercase;
     letter-spacing: 1px;
     border-bottom: 2px solid #e17000;
@@ -169,12 +169,12 @@ html, body, [class*="css"] {
 .stTabs [aria-selected="true"] {
     background: transparent !important;
     border-bottom: 3px solid #e17000 !important;
-    color: #1A2B3C !important;
+    color: #002D62 !important;
     font-weight: 700 !important;
 }
 .stTabs [data-baseweb="tab"]:hover {
-    color: #e17000 !important;
-    background: #fff8f3 !important;
+    color: #007BC0 !important;
+    background: #f0f7fd !important;
 }
 .stTabs [data-baseweb="tab-panel"] {
     background: #f4f6f9;
@@ -222,13 +222,13 @@ html, body, [class*="css"] {
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 [data-testid="stNumberInput"] input:focus {
-    border-color: #e17000;
-    box-shadow: 0 0 0 3px rgba(225,112,0,0.12);
+    border-color: #007BC0;
+    box-shadow: 0 0 0 3px rgba(0,123,192,0.14);
 }
 
 /* ── Expander ── */
 [data-testid="stExpander"] {
-    border: 1px solid #e2e6ea;
+    border: 1px solid #c8dff0;
     border-radius: 8px;
     background: #ffffff;
     box-shadow: 0 1px 4px rgba(0,0,0,0.04);
@@ -236,7 +236,7 @@ html, body, [class*="css"] {
 [data-testid="stExpander"] summary {
     font-size: 13px;
     font-weight: 600;
-    color: #1f4e79;
+    color: #005A9C;
     letter-spacing: 0.3px;
 }
 
