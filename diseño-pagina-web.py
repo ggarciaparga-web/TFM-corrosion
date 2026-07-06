@@ -303,7 +303,7 @@ with st.container():
     with gc1:
         t_global  = st.number_input("Study time [years]", value=250, step=1, key="global_time")
     with gc2:
-        icorr_val = st.number_input(fmt_var("I-corr") + " [µA/cm²]", value=0.5, step=0.1, key="global_icorr")
+        icorr_val = st.number_input("$I_{corr}$ [µA/cm²]", value=0.5, step=0.1, key="global_icorr")
     with gc3:
         st.markdown(
             "<div style='padding-top:28px;font-size:11px;color:#999;font-style:italic;'>"
@@ -354,43 +354,43 @@ with tab_ini:
 
     c1, c2, c3, c4, c5 = st.columns([1.2, 1.2, 1.2, 1.5, 1.2])
     with c1:
-        d_mm = st.number_input("Cover c [mm]", value=30.0, help="Concrete cover thickness")
+        d_mm = st.number_input("Cover $c$ [mm]", value=30.0, help="Concrete cover thickness")
 
     if attack_type == "Carbonation":
         with c2:
-            rh_real = st.number_input(fmt_var("RH-real") + " [%]", 0, 100, 50)
-            hre     = st.number_input(fmt_var("H-re") + " [%]", value=65.0)
+            rh_real = st.number_input("$RH_{real}$ [%]", 0, 100, 50)
+            hre     = st.number_input("$H_{re}$ [%]", value=65.0)
         with c3:
             rain_days = st.number_input("Rain [d/y]", value=50)
-            psr       = st.number_input(fmt_var("P-sr") + " [-]", value=0.0)
+            psr       = st.number_input("$P_{sr}$ [-]", value=0.0)
         with c4:
-            racc = st.number_input(fmt_var("R-acc") + " [mm²/y·kg/m³]", value=4541.32)
-            csd  = st.number_input(fmt_var("C-sd") + " [kg/m³]", value=0.00082, format="%.5f")
+            racc = st.number_input("$R_{acc}$ [mm²/y·kg/m³]", value=4541.32)
+            csd  = st.number_input("$C_{sd}$ [kg/m³]", value=0.00082, format="%.5f")
         with c5:
-            kcd = st.number_input(fmt_var("k-cd") + " [-]", value=0.67)
-            kt  = st.number_input(fmt_var("k-t") + " [-]", value=1.0)
+            kcd = st.number_input("$k_{cd}$ [-]", value=0.67)
+            kt  = st.number_input("$k_t$ [-]", value=1.0)
         with st.expander("Additional Calibration Parameters", expanded=False):
             ca1, ca2, ca3, ca4 = st.columns(4)
-            with ca1: ge     = st.number_input(fmt_var("g-e") + " [-]", value=2.5)
-            with ca2: fe     = st.number_input(fmt_var("f-e") + " [-]", value=5.0)
-            with ca3: bw_ini = st.number_input(fmt_var("b-w") + " [-]", value=0.446)
-            with ca4: t0_ini = st.number_input(fmt_var("t-0") + " [-]", value=0.0767)
+            with ca1: ge     = st.number_input("$g_e$ [-]", value=2.5)
+            with ca2: fe     = st.number_input("$f_e$ [-]", value=5.0)
+            with ca3: bw_ini = st.number_input("$b_w$ [-]", value=0.446)
+            with ca4: t0_ini = st.number_input("$t_0$ [-]", value=0.0767)
         t_i, w_i, y_vals, t_ini_calc = calc_ini.calcular_carbonatacion(
             d_mm, rh_real, hre, ge, fe, kcd, kt, csd, racc, psr, rain_days, bw_ini, t0_ini, t_global)
         y_label, limit_val = "Carbonation Depth [mm]", d_mm
     else:
         with c2:
-            c0 = st.number_input(fmt_var("C-0") + " [%]", value=0.1)
-            cs = st.number_input(fmt_var("C-s") + " [%]", value=4.0)
+            c0 = st.number_input("$C_0$ [%]", value=0.1)
+            cs = st.number_input("$C_s$ [%]", value=4.0)
         with c3:
-            ccrit = st.number_input(fmt_var("C-crit") + " [%]", value=0.6)
-            treal = st.number_input(fmt_var("T-real") + " [K]", value=289.6)
+            ccrit = st.number_input("$C_{crit}$ [%]", value=0.6)
+            treal = st.number_input("$T_{real}$ [K]", value=289.6)
         with c4:
-            tref = st.number_input(fmt_var("T-ref") + " [K]", value=293.0)
-            dcrm = st.number_input("D_app·10⁻¹² [m²/s]", value=1.95, format="%.2e")
+            tref = st.number_input("$T_{ref}$ [K]", value=293.0)
+            dcrm = st.number_input("$D_{app}$·10⁻¹² [m²/s]", value=1.95, format="%.2e")
         with c5:
-            a_age = st.number_input("a (ageing) [-]", value=0.4902)
-            b_cl  = st.number_input(fmt_var("b-cl") + " [K]", value=4800.0)
+            a_age = st.number_input("$a$ (ageing) [-]", value=0.4902)
+            b_cl  = st.number_input("$b_{cl}$ [K]", value=4800.0)
         ke, t0_cl = 1.0, 0.0767
         t_i, dapp, z, y_vals, t_ini_calc = calc_ini.calcular_cloruros(
             d_mm, c0, cs, ccrit, b_cl, tref, treal, ke, t0_cl, a_age, dcrm, t_global)
@@ -419,7 +419,7 @@ with tab_ini:
                 name="Pₓ",
                 hovertemplate="%{y:.1f} mm<extra>Pₓ</extra>"))
             fig_tuutti.update_layout(
-                title=dict(text="Tuutti's Model — Pₓ", font=dict(size=13, color="#1f4e79")),
+                title=dict(text="Tuutti's Model — Pₓ", font=dict(size=13, color="#005A9C")),
                 height=290, plot_bgcolor="white", paper_bgcolor="white",
                 xaxis=dict(title=dict(text="Time [years]"), **_GRID),
                 yaxis=dict(title=dict(text="Pₓ [mm]"), **_GRID),
@@ -431,15 +431,15 @@ with tab_ini:
             fig_ini = go.Figure()
             fig_ini.add_trace(go.Scatter(
                 x=t_i, y=y_vals, fill="tozeroy",
-                fillcolor="rgba(31,78,121,0.08)",
-                line=dict(color="#1f4e79", width=2.5), name="Progress",
+                fillcolor="rgba(0,90,156,0.08)",
+                line=dict(color="#005A9C", width=2.5), name="Progress",
                 hovertemplate="%{y:.1f}<extra>Progress</extra>"))
             fig_ini.add_trace(go.Scatter(
                 x=t_i, y=[limit_val]*len(t_i),
                 line=dict(color="#e17000", dash="dash", width=1.5), name="Limit",
                 hovertemplate="%{y:.1f}<extra>Limit</extra>"))
             fig_ini.update_layout(
-                title=dict(text="Initiation Progress", font=dict(size=13, color="#1f4e79")),
+                title=dict(text="Initiation Progress", font=dict(size=13, color="#005A9C")),
                 height=290, plot_bgcolor="white", paper_bgcolor="white",
                 xaxis=dict(title=dict(text="Time [years]"), **_GRID),
                 yaxis=dict(title=dict(text=y_label), **_GRID),
@@ -465,22 +465,22 @@ with tab_mc:
         h_val = st.number_input("h [mm]", value=300, key="h_mc")
         b_val = st.number_input("b [mm]", value=150, key="b_mc")
     with c2:
-        rec_sup = st.number_input(fmt_var("c-top") + " [mm]", value=20, key="rs_mc")
-        rec_inf = st.number_input(fmt_var("c-bot") + " [mm]", value=20, key="ri_mc")
+        rec_sup = st.number_input("$c_{top}$ [mm]", value=20, key="rs_mc")
+        rec_inf = st.number_input("$c_{bot}$ [mm]", value=20, key="ri_mc")
     with c3:
-        n_sup = st.number_input(fmt_var("n-top"), value=2, min_value=0, key="ns_mc")
-        p_sup = st.number_input("Φ_top [mm]", value=10, key="ps_mc")
+        n_sup = st.number_input("$n_{top}$", value=2, min_value=0, key="ns_mc")
+        p_sup = st.number_input("Φ$_{top}$ [mm]", value=10, key="ps_mc")
     with c4:
-        n_inf     = st.number_input(fmt_var("n-bot"), value=2, min_value=0, key="ni_mc")
-        phi_inf_0 = st.number_input("Φ_bot [mm]", value=16, key="pi_mc")
+        n_inf     = st.number_input("$n_{bot}$", value=2, min_value=0, key="ni_mc")
+        phi_inf_0 = st.number_input("Φ$_{bot}$ [mm]", value=16, key="pi_mc")
     with c5:
-        fyk     = st.number_input(fmt_var("f-yk") + " [MPa]", value=500, key="fyk_mc")
-        fck_val = st.number_input(fmt_var("f-ck") + " [MPa]", value=25,  key="fck_mc")
+        fyk     = st.number_input("$f_{yk}$ [MPa]", value=500, key="fyk_mc")
+        fck_val = st.number_input("$f_{ck}$ [MPa]", value=25,  key="fck_mc")
 
     with c_viz:
         fig_sec = go.Figure()
         fig_sec.add_shape(type="rect", x0=0, y0=0, x1=b_val, y1=h_val,
-            line=dict(color="#1f4e79", width=2), fillcolor="rgba(31,78,121,0.08)")
+            line=dict(color="#005A9C", width=2), fillcolor="rgba(0,90,156,0.08)")
         if n_sup > 0:
             sp_s = (b_val - 2*rec_sup)/(n_sup-1) if n_sup > 1 else 0
             xs   = rec_sup if n_sup > 1 else b_val/2
@@ -519,7 +519,7 @@ with tab_mc:
     with col_graph:
         fig_res = go.Figure()
         fig_res.add_trace(go.Scatter(x=t_cv, y=mu_cv, name="Contevect Model",
-            line=dict(color="#1f4e79", width=2.5),
+            line=dict(color="#005A9C", width=2.5),
             hovertemplate="%{y:.1f} kNm<extra>Contevect</extra>"))
         fig_res.add_trace(go.Scatter(x=t_mc, y=mu_std_mc, name="MC Standard",
             line=dict(color="#e17000", width=2.5, dash="dash"),
@@ -529,7 +529,7 @@ with tab_mc:
             hovertemplate="%{y:.1f} kNm<extra>MC Conservative</extra>"))
         fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"],
             mode="markers", name="Critical Events (CV)",
-            marker=dict(color="#1f4e79", size=9, symbol="diamond"),
+            marker=dict(color="#005A9C", size=9, symbol="diamond"),
             hovertemplate="%{y:.1f} kNm<extra>Critical Event</extra>"))
         _vline_ini(fig_res, t_ini_session)
         if t_life:
@@ -544,14 +544,14 @@ with tab_mc:
 
     with col_table:
         st.markdown(
-            "<div style='font-size:11px;font-weight:700;color:#1f4e79;text-transform:uppercase;"
+            "<div style='font-size:11px;font-weight:700;color:#005A9C;text-transform:uppercase;"
             "letter-spacing:.8px;margin-bottom:8px;'>Key Degradation Steps</div>",
             unsafe_allow_html=True)
         st.dataframe(df_criticos[["Tiempo", "Px", "Mu"]],
             column_config={
                 "Tiempo": st.column_config.NumberColumn("Time [y]",   format="%.1f"),
                 "Px":     st.column_config.NumberColumn("Corr. [mm]", format="%.3f"),
-                "Mu":     st.column_config.NumberColumn("Mu [kNm]",   format="%.2f"),
+                "Mu":     st.column_config.NumberColumn("Mᵤ [kNm]",   format="%.2f"),
             }, hide_index=True, use_container_width=True)
         if t_life:
             st.markdown(
@@ -576,34 +576,34 @@ with tab_pret:
         h_p = st.number_input("h [mm]", value=h_val, key="h_p3")
         b_p = st.number_input("b [mm]", value=b_val, key="b_p3")
     with c2:
-        rs_p = st.number_input(fmt_var("c-top") + " [mm]", value=rec_sup, key="rs_p3")
-        ri_p = st.number_input(fmt_var("c-bot") + " [mm]", value=rec_inf, key="ri_p3")
+        rs_p = st.number_input("$c_{top}$ [mm]", value=rec_sup, key="rs_p3")
+        ri_p = st.number_input("$c_{bot}$ [mm]", value=rec_inf, key="ri_p3")
     with c3:
-        nt_p = st.number_input(fmt_var("n-top"), value=n_sup, key="nt_p3")
-        pt_p = st.number_input("Φ_top [mm]", value=p_sup, key="pt_p3")
+        nt_p = st.number_input("$n_{top}$", value=n_sup, key="nt_p3")
+        pt_p = st.number_input("Φ$_{top}$ [mm]", value=p_sup, key="pt_p3")
     with c4:
-        np_p      = st.number_input(fmt_var("n-bot"), value=2, key="np_p3")
-        phi_p_val = st.number_input("Φ_p [mm]", value=14.0, key="phip_p3")
+        np_p      = st.number_input("$n_{bot}$", value=2, key="np_p3")
+        phi_p_val = st.number_input("Φ$_p$ [mm]", value=14.0, key="phip_p3")
     with c5:
-        ae_p3_val  = st.number_input(fmt_var("A-e") + " [mm²]", value=92.0, key="ae_p3_key")
-        fpy_p3_val = st.number_input(fmt_var("f-py") + " [MPa]", value=1860, key="fpy_p3_key")
+        ae_p3_val  = st.number_input("$A_e$ [mm²]", value=92.0, key="ae_p3_key")
+        fpy_p3_val = st.number_input("$f_{py}$ [MPa]", value=1860, key="fpy_p3_key")
     with c6:
-        fyk_p = st.number_input(fmt_var("f-yk") + " [MPa]", value=fyk,     key="fyk_p3")
-        fck_p = st.number_input(fmt_var("f-ck") + " [MPa]", value=fck_val, key="fck_p3")
+        fyk_p = st.number_input("$f_{yk}$ [MPa]", value=fyk,     key="fyk_p3")
+        fck_p = st.number_input("$f_{ck}$ [MPa]", value=fck_val, key="fck_p3")
 
     with st.expander("Shear inputs", expanded=False):
         cv1, cv2, cv3 = st.columns([1, 1, 1])
         with cv1:
-            v_ed_val = st.number_input(fmt_var("V-Ed") + " [kN]",  value=0.0, key="ved_p3")
-            m_ed_val = st.number_input(fmt_var("M-Ed") + " [kNm]", value=0.0, key="med_p3")
+            v_ed_val = st.number_input("$V_{Ed}$ [kN]",  value=0.0, key="ved_p3")
+            m_ed_val = st.number_input("$M_{Ed}$ [kNm]", value=0.0, key="med_p3")
         with cv2:
-            gamma_v_val = st.number_input("γ_V",              value=1.4,  key="gv_p3")
-            d_lower_val = st.number_input("d_lower [mm]",     value=12.0, key="dl_p3")
+            gamma_v_val = st.number_input("γ$_V$",              value=1.4,  key="gv_p3")
+            d_lower_val = st.number_input("$d_{lower}$ [mm]",   value=12.0, key="dl_p3")
 
     with c_viz:
         fig_sec_p = go.Figure()
         fig_sec_p.add_shape(type="rect", x0=0, y0=0, x1=b_p, y1=h_p,
-            line=dict(color="#1f4e79", width=2), fillcolor="rgba(31,78,121,0.08)")
+            line=dict(color="#005A9C", width=2), fillcolor="rgba(0,90,156,0.08)")
         if nt_p > 0:
             sp_s = (b_p - 2*rs_p)/(nt_p-1) if nt_p > 1 else 0
             xs   = rs_p if nt_p > 1 else b_p/2
@@ -616,7 +616,7 @@ with tab_pret:
             xp   = ri_p if np_p > 1 else b_p/2
             for i in range(np_p):
                 fig_sec_p.add_trace(go.Scatter(x=[xp+i*sp_p], y=[y_pre],
-                    mode="markers", marker=dict(size=phi_p_val*1.1, color="#1f4e79"), showlegend=False))
+                    mode="markers", marker=dict(size=phi_p_val*1.1, color="#005A9C"), showlegend=False))
         fig_sec_p.update_layout(
             xaxis=dict(visible=False),
             yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
@@ -654,12 +654,12 @@ with tab_pret:
         fig_stresses = go.Figure()
         fig_stresses.add_trace(go.Scatter(
             x=df_t["t"], y=df_t["sigma_inferior"],
-            name="σ Bottom", line=dict(color="#e17000", width=2.5),
-            hovertemplate="%{y:.1f} MPa<extra>σ Bottom</extra>"))
+            name="σ<sub>bot</sub>", line=dict(color="#e17000", width=2.5),
+            hovertemplate="%{y:.1f} MPa<extra>σ bot</extra>"))
         fig_stresses.add_trace(go.Scatter(
             x=df_t["t"], y=df_t["sigma_superior"],
-            name="σ Top", line=dict(color="#1f4e79", width=2.5),
-            hovertemplate="%{y:.1f} MPa<extra>σ Top</extra>"))
+            name="σ<sub>top</sub>", line=dict(color="#005A9C", width=2.5),
+            hovertemplate="%{y:.1f} MPa<extra>σ top</extra>"))
         _vline_ini(fig_stresses, t_ini_session)
         if t_life_p3:
             _vline_eol(fig_stresses, t_life_p3)
@@ -678,7 +678,7 @@ with tab_pret:
         fig_shear = go.Figure()
         fig_shear.add_trace(go.Scatter(
             x=df_cor["t"], y=df_cor["vrd"],
-            name="V<sub>Rd</sub>", line=dict(color="#1f4e79", width=2.5),
+            name="V<sub>Rd</sub>", line=dict(color="#005A9C", width=2.5),
             hovertemplate="%{y:.1f} kN<extra>V_Rd</extra>"))
         if v_ed_val > 0:
             fig_shear.add_hline(
