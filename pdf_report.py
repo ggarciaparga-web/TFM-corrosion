@@ -672,7 +672,7 @@ def build_pdf(state: dict) -> bytes:
     story.append(_kv_table([
         ("h [mm]",                   state.get("h_p", "—")),
         ("b [mm]",                   state.get("b_p", "—")),
-        ("Φ_p [mm]",                 state.get("phi_p_val", "—")),
+        ("Φp [mm]",                 state.get("phi_p_val", "—")),
         (fmt_var("n-bot"),           state.get("np_p", "—")),
         (fmt_var("f-py") + " [MPa]", state.get("fpy_p3_val", "—")),
         (fmt_var("A-e") + " [mm²]",  state.get("ae_p3_val", "—")),
@@ -719,8 +719,7 @@ def build_pdf(state: dict) -> bytes:
         "prepared by Gabriela García-Parga at the Universidad Politécnica de Madrid. "
         "The research was supervised by María del Mar Corral and Leonardo Todisco. "
         "The results presented in this report are intended for academic and research purposes "
-        "only and should not be used as the sole basis for structural design or safety assessments. "
-        "The authors accept no liability for decisions made on the basis of this report.",
+        ,
         styles["body"],
     ))
 
