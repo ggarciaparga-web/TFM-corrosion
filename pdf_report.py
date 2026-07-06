@@ -1,732 +1,748 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-from calculos import tiempoiniciacion as calc_ini
-from calculos import Modelcode as calc_mc
-from calculos import Contevect as calc_cv
-from calculos import Cortante as calc_cor
-from calculos import pretensado as calc_pre
-from calculos import Cortantee as calc_cor  # noqa: F811 – intentional re-import
-from pdf_report import render_pdf_button
+"""
+pdf_report.py
+─────────────────────────────────────────────────────────────────────────────
+Generates a multi-section PDF report for the Residual Capacity Platform.
 
-# ── Unicode subscript helper ──────────────────────────────────────────────────
-# Only use subscript characters that are universally supported in all browsers.
-# Digits 0-9 and the most common letters (a, e, i, n, o, r, s, u, v, x) have
-# proper Unicode subscript codepoints. All others fall back to normal characters.
+Key design decisions
+────────────────────
+* Charts are rendered to PNG bytes via plotly's `write_image` (kaleido engine).
+  No external wkhtmltopdf / weasyprint / pdfkit dependency is required.
+* If kaleido is unavailable a graceful fallback message is inserted instead of
+  crashing.
+* The cover page is rendered ONCE (duplicate removed).
+* Variable labels that follow the  Base-suffix  convention are displayed with
+  Unicode subscripts in the PDF body text.
+"""
+
+from __future__ import annotations
+
+import io
+import re
+import datetime
+from typing import Any
+
+import streamlit as st
+
+# ── ReportLab imports ─────────────────────────────────────────────────────────
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm, mm
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+    HRFlowable, PageBreak, KeepTogether,
+)
+from reportlab.platypus import Image as RLImage
+from reportlab.pdfgen import canvas as rl_canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+# ── Register a Unicode-capable font for body text ────────────────────────────
+# ReportLab's built-in Helvetica is Latin-1 only — subscript Unicode chars
+# (₀₁₂…ₐₑᵢ…) render as dark boxes with it.  We register DejaVu Sans which
+# ships with most Python environments (matplotlib bundles it) and covers the
+# full Unicode Latin Extended block including all subscript codepoints we use.
+import os as _os, sys as _sys
+
+def _register_unicode_font() -> str:
+    """Try to register DejaVuSans; return font name to use in styles."""
+    candidates = [
+        # matplotlib bundles DejaVu fonts — most reliable source
+        _os.path.join(_os.path.dirname(_sys.modules.get("matplotlib", type("", (), {"__file__": ""})).__file__ or ""),
+                      "mpl-data", "fonts", "ttf", "DejaVuSans.ttf"),
+        # Common Linux system paths
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        # macOS / Homebrew
+        "/opt/homebrew/share/fonts/dejavu-fonts/DejaVuSans.ttf",
+        "/Library/Fonts/DejaVuSans.ttf",
+    ]
+    for path in candidates:
+        if path and _os.path.isfile(path):
+            try:
+                pdfmetrics.registerFont(TTFont("DejaVuSans", path))
+                pdfmetrics.registerFont(TTFont("DejaVuSans-Bold",
+                    path.replace("DejaVuSans.ttf", "DejaVuSans-Bold.ttf")
+                    if _os.path.isfile(path.replace("DejaVuSans.ttf", "DejaVuSans-Bold.ttf"))
+                    else path))
+                return "DejaVuSans"
+            except Exception:
+                continue
+    # Fallback: Helvetica (subscripts may show as boxes for unsupported chars)
+    return "Helvetica"
+
+_BODY_FONT      = _register_unicode_font()
+_BODY_FONT_BOLD = _BODY_FONT + "-Bold" if _BODY_FONT != "Helvetica" else "Helvetica-Bold"
+
+# ── Colour palette ────────────────────────────────────────────────────────────
+NAVY   = colors.HexColor("#002D62")
+BLUE   = colors.HexColor("#005A9C")
+ORANGE = colors.HexColor("#e17000")
+LGRAY  = colors.HexColor("#f4f6f9")
+MGRAY  = colors.HexColor("#e2e6ea")
+DGRAY  = colors.HexColor("#555555")
+WHITE  = colors.white
+
+PAGE_W, PAGE_H = A4
+MARGIN = 2.0 * cm
+
+# ── Unicode subscript helper (mirrors app.py) ─────────────────────────────────
+# CRITICAL: Only use subscript codepoints that Helvetica (ReportLab's built-in
+# font) can render. Characters outside Latin-1 / Windows-1252 will appear as
+# dark boxes. The safe set is: digits ₀–₉ and letters ₐ ₑ ᵢ ₙ ₒ ᵣ ₛ ᵤ ᵥ ₓ.
+# All other suffix characters fall back to their normal (non-subscript) form.
 _SUB_MAP = str.maketrans(
     "0123456789aeinorsuv x",
     "₀₁₂₃₄₅₆₇₈₉ₐₑᵢₙₒᵣₛᵤᵥ ₓ",
 )
 
 def fmt_var(label: str) -> str:
-    """Convert 'X-i' style labels to 'Xᵢ' using Unicode subscripts.
+    """Convert 'X-i' style labels to 'Xᵢ' using safe Unicode subscripts.
 
     Only digits and the letters a, e, i, n, o, r, s, u, v, x have proper
-    Unicode subscript codepoints — all others are left as normal characters
-    to avoid rendering as dark boxes in PDF or unsupported environments.
+    Unicode subscript codepoints supported by ReportLab's Helvetica font.
+    All other suffix characters are left as normal text to avoid dark boxes.
     """
-    import re
     def _replace(m):
         base, sub = m.group(1), m.group(2)
         return base + sub.translate(_SUB_MAP)
     return re.sub(r'([A-Za-z_]+)-([0-9a-z]+)', _replace, label)
 
 
-# ── Page config ───────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Residual Capacity Platform",
-    page_icon="🏗️",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
+# ── Plotly → PNG bytes (multi-engine, no kaleido required) ───────────────────
+def _fig_to_png(fig, width_px: int = 900, height_px: int = 400) -> bytes | None:
+    """
+    Convert a Plotly figure to PNG bytes.
 
-# ── Polished CSS ──────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+    Tries three engines in order:
+      1. kaleido  (plotly.io.to_image)  — best quality, optional dependency
+      2. orca     (plotly.io.to_image with orca engine)
+      3. matplotlib — pure-Python fallback, always available, redraws the
+         traces from the Plotly figure dict so no extra install is needed.
 
-/* ── Base ── */
-html, body, [class*="css"] {
-    font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    color: #1A1A1A;
-    font-size: 14px;
-    line-height: 1.55;
-    -webkit-font-smoothing: antialiased;
-}
-.main .block-container {
-    background: #f4f6f9;
-    padding-top: 0 !important;
-    padding-bottom: 2.5rem;
-    max-width: 1440px;
-}
+    Returns None only if all three engines fail.
+    """
+    # ── Engine 1: kaleido ────────────────────────────────────────────────────
+    try:
+        import plotly.io as pio
+        png_bytes = pio.to_image(fig, format="png", width=width_px, height=height_px, scale=2)
+        if png_bytes:
+            return png_bytes
+    except Exception:
+        pass
 
-/* ── Header ── */
-.rcp-header {
-    background: linear-gradient(135deg, #002D62 0%, #005A9C 60%, #007BC0 100%);
-    padding: 28px 40px 22px 40px;
-    margin: -1rem -1rem 0 -1rem;
-    border-bottom: 4px solid #e17000;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-}
-.rcp-header-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin: 0;
-}
-.rcp-header-sub {
-    font-size: 11px;
-    color: #a8d4f0;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    margin-top: 5px;
-}
-.rcp-header-badge {
-    background: #e17000;
-    color: white;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 5px 14px;
-    border-radius: 20px;
-    letter-spacing: 1px;
-    box-shadow: 0 2px 8px rgba(225,112,0,0.4);
-}
+    # ── Engine 2: orca ───────────────────────────────────────────────────────
+    try:
+        import plotly.io as pio
+        png_bytes = pio.to_image(fig, format="png", width=width_px, height=height_px,
+                                  engine="orca")
+        if png_bytes:
+            return png_bytes
+    except Exception:
+        pass
 
-/* ── Global params bar ── */
-.global-bar {
-    background: #ffffff;
-    border: 1px solid #e2e6ea;
-    border-left: 4px solid #e17000;
-    border-radius: 0 8px 8px 0;
-    padding: 16px 24px;
-    margin: 18px 0 22px 0;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-}
+    # ── Engine 3: matplotlib fallback ────────────────────────────────────────
+    try:
+        return _fig_to_png_matplotlib(fig, width_px, height_px)
+    except Exception:
+        return None
 
-/* ── Info banner ── */
-.info-banner {
-    background: #e6f2fb;
-    border-left: 4px solid #005A9C;
-    padding: 9px 16px;
-    border-radius: 0 6px 6px 0;
-    font-size: 12px;
-    color: #005A9C;
-    margin-bottom: 14px;
-    box-shadow: 0 1px 4px rgba(0,90,156,0.08);
-}
 
-/* ── Section title ── */
-.section-title {
-    font-size: 11.5px;
-    font-weight: 700;
-    color: #005A9C;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-bottom: 2px solid #e17000;
-    padding-bottom: 7px;
-    margin-bottom: 16px;
-}
+# Colour cycle used by the matplotlib fallback (mirrors the app palette)
+_MPL_COLORS = ["#e17000", "#1f4e79", "#2c2c2a", "#888888",
+               "#4caf50", "#9c27b0", "#00bcd4", "#f44336"]
 
-/* ── EOL badge ── */
-.eol-badge {
-    margin-top: 12px;
-    background: #fff8f0;
-    border-left: 3px solid #e17000;
-    padding: 10px 14px;
-    border-radius: 0 6px 6px 0;
-    font-size: 13px;
-    box-shadow: 0 1px 4px rgba(225,112,0,0.1);
-}
+def _fig_to_png_matplotlib(fig, width_px: int = 900, height_px: int = 400) -> bytes | None:
+    """
+    Pure-matplotlib re-render of a Plotly figure.
 
-/* ── Tabs ── */
-.stTabs [data-baseweb="tab-list"] {
-    background: #ffffff;
-    border-bottom: 2px solid #e2e6ea;
-    gap: 0;
-    padding: 0;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-}
-.stTabs [data-baseweb="tab"] {
-    height: 48px;
-    background: transparent;
-    border-radius: 0;
-    color: #555;
-    padding: 0 30px;
-    font-size: 13.5px;
-    font-weight: 500;
-    border: none;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px;
-    transition: color 0.15s, background 0.15s;
-    letter-spacing: 0.2px;
-}
-.stTabs [aria-selected="true"] {
-    background: transparent !important;
-    border-bottom: 3px solid #e17000 !important;
-    color: #002D62 !important;
-    font-weight: 700 !important;
-}
-.stTabs [data-baseweb="tab"]:hover {
-    color: #007BC0 !important;
-    background: #f0f7fd !important;
-}
-.stTabs [data-baseweb="tab-panel"] {
-    background: #f4f6f9;
-    padding-top: 22px;
-}
+    Iterates over fig.data traces and draws lines / scatter markers using
+    matplotlib.  Axis titles, legend labels and vertical lines (shapes /
+    annotations) are also reproduced so the PDF charts look clean even
+    without kaleido.
+    """
+    import matplotlib  # noqa: PLC0415
+    matplotlib.use("Agg")          # non-interactive backend, safe in any env
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    import numpy as np
 
-/* ── Metrics ── */
-[data-testid="stMetric"] {
-    background: #ffffff;
-    border: 1px solid #e8ecf0;
-    border-top: 3px solid #e17000;
-    border-radius: 8px;
-    padding: 16px 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    transition: box-shadow 0.2s;
-}
-[data-testid="stMetric"]:hover {
-    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
-}
-[data-testid="stMetricLabel"] {
-    font-size: 10.5px !important;
-    font-weight: 600 !important;
-    color: #888 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-}
-[data-testid="stMetricValue"] {
-    font-size: 22px !important;
-    font-weight: 700 !important;
-    color: #1A2B3C !important;
-}
+    dpi = 150
+    fig_w = width_px  / dpi
+    fig_h = height_px / dpi
 
-/* ── Number inputs ── */
-[data-testid="stNumberInput"] label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #444;
-    letter-spacing: 0.2px;
-}
-[data-testid="stNumberInput"] input {
-    border-radius: 5px;
-    border: 1px solid #d0d5dd;
-    font-size: 13.5px;
-    background: #ffffff;
-    transition: border-color 0.15s, box-shadow 0.15s;
-}
-[data-testid="stNumberInput"] input:focus {
-    border-color: #007BC0;
-    box-shadow: 0 0 0 3px rgba(0,123,192,0.14);
-}
+    mpl_fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=dpi)
 
-/* ── Expander ── */
-[data-testid="stExpander"] {
-    border: 1px solid #c8dff0;
-    border-radius: 8px;
-    background: #ffffff;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-[data-testid="stExpander"] summary {
-    font-size: 13px;
-    font-weight: 600;
-    color: #005A9C;
-    letter-spacing: 0.3px;
-}
+    # ── Style ────────────────────────────────────────────────────────────────
+    ax.set_facecolor("#ffffff")
+    mpl_fig.patch.set_facecolor("#ffffff")
+    ax.grid(True, color="#ebebeb", linewidth=0.8, zorder=0)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.spines[["left", "bottom"]].set_color("#cccccc")
+    ax.tick_params(colors="#555555", labelsize=7)
 
-/* ── DataFrame ── */
-[data-testid="stDataFrame"] {
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid #e2e6ea;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
+    legend_handles = []
+    color_idx = 0
 
-/* ── Floating download button ── */
-div[data-testid="stDownloadButton"] > button {
-    position: fixed;
-    top: 64px;
-    right: 28px;
-    z-index: 9999;
-    background: #e17000;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 11px 24px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 16px rgba(225,112,0,0.38);
-    cursor: pointer;
-    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
-}
-div[data-testid="stDownloadButton"] > button:hover {
-    background: #c45e00;
-    box-shadow: 0 6px 20px rgba(225,112,0,0.5);
-    transform: translateY(-1px);
-}
+    # ── Traces ───────────────────────────────────────────────────────────────
+    for trace in fig.data:
+        # Resolve colour: prefer the trace's own colour, else cycle
+        raw_color = None
+        if hasattr(trace, "line") and trace.line and trace.line.color:
+            raw_color = trace.line.color
+        elif hasattr(trace, "marker") and trace.marker and trace.marker.color:
+            c = trace.marker.color
+            if isinstance(c, str):
+                raw_color = c
+        color = raw_color or _MPL_COLORS[color_idx % len(_MPL_COLORS)]
+        color_idx += 1
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #e17000; }
+        x = list(trace.x) if trace.x is not None else []
+        y = list(trace.y) if trace.y is not None else []
+        if not x or not y:
+            continue
 
-/* ── Divider ── */
-hr { border: none; border-top: 1px solid #e2e6ea; margin: 18px 0; }
-</style>
-""", unsafe_allow_html=True)
+        trace_type = type(trace).__name__.lower()
+        label = str(trace.name) if trace.name else None
 
-# ── Header ────────────────────────────────────────────────────────────────────
-st.markdown("""
-<div class="rcp-header">
-  <div>
-    <div class="rcp-header-title">Residual Capacity Platform</div>
-    <div class="rcp-header-sub">Concrete Durability &amp; Structural Capacity Tool</div>
-  </div>
-  <div class="rcp-header-badge">v2.0</div>
-</div>
-<div style='height:18px'></div>
-""", unsafe_allow_html=True)
+        if "scatter" in trace_type:
+            mode = getattr(trace, "mode", None) or "lines"
+            ls_map = {"dash": "--", "dot": ":", "dashdot": "-."}
+            lw = 1.8
+            ls = "-"
+            if hasattr(trace, "line") and trace.line:
+                if trace.line.dash:
+                    ls = ls_map.get(trace.line.dash, "-")
+                if trace.line.width:
+                    lw = float(trace.line.width) * 0.7
 
-# ── Global parameters ─────────────────────────────────────────────────────────
-# Use a container so Streamlit doesn't inject an extra empty block-container
-with st.container():
-    st.markdown('<div class="global-bar">', unsafe_allow_html=True)
-    gc1, gc2, gc3 = st.columns([1, 1, 4])
-    with gc1:
-        t_global  = st.number_input("Study time [years]", value=250, step=1, key="global_time")
-    with gc2:
-        icorr_val = st.number_input("$I_{corr}$ [µA/cm²]", value=0.5, step=0.1, key="global_icorr")
-    with gc3:
-        st.markdown(
-            "<div style='padding-top:28px;font-size:11px;color:#999;font-style:italic;'>"
-            "Set global parameters before running any analysis tab.</div>",
-            unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+            if "lines" in mode:
+                line_obj, = ax.plot(x, y, color=color, linewidth=lw,
+                                    linestyle=ls, zorder=3)
+                if label:
+                    legend_handles.append(
+                        mpatches.Patch(color=color, label=label))
 
-# ── Session state defaults ────────────────────────────────────────────────────
-if "t_ini_res"   not in st.session_state: st.session_state["t_ini_res"]   = 0.0
-if "tipo_ataque" not in st.session_state: st.session_state["tipo_ataque"] = "Carbonation"
-if "alpha"       not in st.session_state: st.session_state["alpha"]       = 2.0
+            if "markers" in mode:
+                ms = 5
+                if hasattr(trace, "marker") and trace.marker and trace.marker.size:
+                    sz = trace.marker.size
+                    ms = float(sz) * 0.5 if not isinstance(sz, (list, tuple)) else 5
+                ax.scatter(x, y, color=color, s=ms**2, zorder=4)
+                if label and "lines" not in mode:
+                    legend_handles.append(
+                        mpatches.Patch(color=color, label=label))
 
-# ── Tabs ──────────────────────────────────────────────────────────────────────
-tab_ini, tab_mc, tab_pret = st.tabs([
-    " Initiation Period",
-    " Residual Capacity",
-    " Prestressed Section",
-])
+            # Fill under line
+            if hasattr(trace, "fill") and trace.fill in ("tozeroy", "tonexty"):
+                ax.fill_between(x, y, alpha=0.10, color=color, zorder=1)
 
-# ── Shared plot style helpers ─────────────────────────────────────────────────
-_FONT = dict(family="'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif", size=11)
-_GRID = dict(showgrid=True, gridcolor="#ebebeb", gridwidth=1)
+        elif "bar" in trace_type:
+            ax.bar(x, y, color=color, alpha=0.85, zorder=3)
+            if label:
+                legend_handles.append(mpatches.Patch(color=color, label=label))
 
-def _vline_ini(fig, x):
-    fig.add_vline(
-        x=x, line_dash="dash", line_color="#888", line_width=1.5, opacity=0.8,
-        annotation=dict(text=f"<b>{x:.1f} yrs</b>",
-            font=dict(size=11, color="#555"),
-            bgcolor="rgba(255,255,255,0.85)", borderpad=3,
-            yref="paper", y=0, yanchor="top"))
+    # ── Vertical lines from fig.layout.shapes ────────────────────────────────
+    layout = fig.layout
+    if layout.shapes:
+        for shape in layout.shapes:
+            if getattr(shape, "type", None) == "line":
+                if shape.x0 == shape.x1:          # vertical
+                    sc = getattr(shape, "line", None)
+                    lc = (sc.color if sc and sc.color else "#888888")
+                    ld = (sc.dash  if sc and sc.dash  else "solid")
+                    ls_map = {"dash": "--", "dot": ":", "dashdot": "-."}
+                    ax.axvline(x=shape.x0, color=lc,
+                               linestyle=ls_map.get(ld, "--"),
+                               linewidth=1.2, alpha=0.8, zorder=5)
 
-def _vline_eol(fig, x, color="#e17000"):
-    fig.add_vline(
-        x=x, line_dash="dot", line_color=color, line_width=1.5,
-        annotation=dict(text=f"<b>End of Life<br>{x:.1f} yrs</b>",
-            font=dict(size=11, color=color),
-            bgcolor="rgba(255,255,255,0.85)", borderpad=3,
-            yref="paper", y=0, yanchor="top"))
+    # ── Axis labels ──────────────────────────────────────────────────────────
+    font_kw = dict(fontsize=8, color="#333333")
+    if layout.xaxis and layout.xaxis.title and layout.xaxis.title.text:
+        ax.set_xlabel(layout.xaxis.title.text, **font_kw)
+    if layout.yaxis and layout.yaxis.title and layout.yaxis.title.text:
+        ax.set_ylabel(layout.yaxis.title.text, **font_kw)
+    if layout.title and layout.title.text:
+        ax.set_title(layout.title.text, fontsize=9, color="#1f4e79", pad=6)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 1 — INITIATION PERIOD
-# ══════════════════════════════════════════════════════════════════════════════
-with tab_ini:
-    attack_type = st.radio("Select analysis phenomenon:", ["Carbonation", "Chlorides"], horizontal=True)
-    st.session_state["attack_type"] = attack_type
-    st.session_state["alpha"] = 2.0 if attack_type == "Carbonation" else 10.0
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    # ── Legend ───────────────────────────────────────────────────────────────
+    if legend_handles:
+        ax.legend(handles=legend_handles, fontsize=7, framealpha=0.85,
+                  loc="upper right", edgecolor="#dddddd")
 
-    c1, c2, c3, c4, c5 = st.columns([1.2, 1.2, 1.2, 1.5, 1.2])
-    with c1:
-        d_mm = st.number_input("Cover $c$ [mm]", value=30.0, help="Concrete cover thickness")
+    mpl_fig.tight_layout(pad=0.6)
 
-    if attack_type == "Carbonation":
-        with c2:
-            rh_real = st.number_input("$RH_{real}$ [%]", 0, 100, 50)
-            hre     = st.number_input("$H_{re}$ [%]", value=65.0)
-        with c3:
-            rain_days = st.number_input("Rain [d/y]", value=50)
-            psr       = st.number_input("$P_{sr}$ [-]", value=0.0)
-        with c4:
-            racc = st.number_input("$R_{acc}$ [mm²/y·kg/m³]", value=4541.32)
-            csd  = st.number_input("$C_{sd}$ [kg/m³]", value=0.00082, format="%.5f")
-        with c5:
-            kcd = st.number_input("$k_{cd}$ [-]", value=0.67)
-            kt  = st.number_input("$k_t$ [-]", value=1.0)
-        with st.expander("Additional Calibration Parameters", expanded=False):
-            ca1, ca2, ca3, ca4 = st.columns(4)
-            with ca1: ge     = st.number_input("$g_e$ [-]", value=2.5)
-            with ca2: fe     = st.number_input("$f_e$ [-]", value=5.0)
-            with ca3: bw_ini = st.number_input("$b_w$ [-]", value=0.446)
-            with ca4: t0_ini = st.number_input("$t_0$ [-]", value=0.0767)
-        t_i, w_i, y_vals, t_ini_calc = calc_ini.calcular_carbonatacion(
-            d_mm, rh_real, hre, ge, fe, kcd, kt, csd, racc, psr, rain_days, bw_ini, t0_ini, t_global)
-        y_label, limit_val = "Carbonation Depth [mm]", d_mm
+    buf = io.BytesIO()
+    mpl_fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+    plt.close(mpl_fig)
+    buf.seek(0)
+    return buf.read()
+
+
+def _rl_image(fig, max_width: float, max_height: float) -> RLImage | Paragraph | None:
+    """
+    Return a ReportLab Image flowable from a Plotly figure, scaled to fit.
+    Falls back to a styled Paragraph only if ALL rendering engines fail.
+    """
+    if fig is None:
+        return None
+
+    png = _fig_to_png(fig)
+    if png is None:
+        styles = getSampleStyleSheet()
+        warn_style = ParagraphStyle(
+            "warn", parent=styles["Normal"],
+            textColor=ORANGE, fontSize=9, leading=12,
+        )
+        return Paragraph(
+            "⚠ Chart could not be rendered.",
+            warn_style,
+        )
+
+    buf = io.BytesIO(png)
+    img = RLImage(buf)
+    # Scale proportionally to fit within the allowed box
+    scale = min(max_width / img.imageWidth, max_height / img.imageHeight, 1.0)
+    img.drawWidth  = img.imageWidth  * scale
+    img.drawHeight = img.imageHeight * scale
+    return img
+
+
+# ── Styles ────────────────────────────────────────────────────────────────────
+def _build_styles() -> dict[str, ParagraphStyle]:
+    base = getSampleStyleSheet()
+    return {
+        "cover_title": ParagraphStyle(
+            "cover_title", parent=base["Title"],
+            fontSize=28, leading=34, textColor=WHITE,
+            fontName="Helvetica-Bold", alignment=TA_CENTER,
+        ),
+        "cover_sub": ParagraphStyle(
+            "cover_sub", parent=base["Normal"],
+            fontSize=12, leading=16, textColor=colors.HexColor("#90b8d8"),
+            fontName="Helvetica", alignment=TA_CENTER,
+        ),
+        "cover_meta": ParagraphStyle(
+            "cover_meta", parent=base["Normal"],
+            fontSize=9, leading=13, textColor=colors.HexColor("#aac4e0"),
+            fontName="Helvetica", alignment=TA_CENTER,
+        ),
+        "section_h": ParagraphStyle(
+            "section_h", parent=base["Heading1"],
+            fontSize=13, leading=17, textColor=BLUE,
+            fontName="Helvetica-Bold", spaceBefore=14, spaceAfter=4,
+        ),
+        "sub_h": ParagraphStyle(
+            "sub_h", parent=base["Heading2"],
+            fontSize=10, leading=14, textColor=NAVY,
+            fontName="Helvetica-Bold", spaceBefore=8, spaceAfter=2,
+        ),
+        "body": ParagraphStyle(
+            "body", parent=base["Normal"],
+            fontSize=9, leading=13, textColor=DGRAY,
+            fontName=_BODY_FONT,
+        ),
+        "kv_key": ParagraphStyle(
+            "kv_key", parent=base["Normal"],
+            fontSize=8, leading=11, textColor=DGRAY,
+            fontName=_BODY_FONT_BOLD,
+        ),
+        "kv_val": ParagraphStyle(
+            "kv_val", parent=base["Normal"],
+            fontSize=8, leading=11, textColor=NAVY,
+            fontName=_BODY_FONT,
+        ),
+        "caption": ParagraphStyle(
+            "caption", parent=base["Normal"],
+            fontSize=8, leading=11, textColor=DGRAY,
+            fontName=_BODY_FONT, alignment=TA_CENTER,
+        ),
+        "footer": ParagraphStyle(
+            "footer", parent=base["Normal"],
+            fontSize=7, leading=10, textColor=colors.HexColor("#aaaaaa"),
+            fontName=_BODY_FONT, alignment=TA_CENTER,
+        ),
+    }
+
+
+# ── Page template callbacks ───────────────────────────────────────────────────
+def _on_page(canv: rl_canvas.Canvas, doc: SimpleDocTemplate) -> None:
+    """Draw header rule + footer on every page except the cover."""
+    if doc.page == 1:
+        return
+    canv.saveState()
+    # Top rule
+    canv.setStrokeColor(ORANGE)
+    canv.setLineWidth(2)
+    canv.line(MARGIN, PAGE_H - 1.4 * cm, PAGE_W - MARGIN, PAGE_H - 1.4 * cm)
+    # Header text
+    canv.setFont("Helvetica-Bold", 7)
+    canv.setFillColor(BLUE)
+    canv.drawString(MARGIN, PAGE_H - 1.1 * cm, "RESIDUAL CAPACITY PLATFORM")
+    canv.setFont("Helvetica", 7)
+    canv.setFillColor(DGRAY)
+    canv.drawRightString(PAGE_W - MARGIN, PAGE_H - 1.1 * cm,
+                         f"Generated {datetime.date.today().strftime('%d %b %Y')}")
+    # Footer rule
+    canv.setStrokeColor(MGRAY)
+    canv.setLineWidth(0.5)
+    canv.line(MARGIN, 1.2 * cm, PAGE_W - MARGIN, 1.2 * cm)
+    # Page number
+    canv.setFont("Helvetica", 7)
+    canv.setFillColor(colors.HexColor("#aaaaaa"))
+    canv.drawCentredString(PAGE_W / 2, 0.7 * cm, f"Page {doc.page}")
+    canv.restoreState()
+
+
+# ── Cover page (drawn once via canvas, not as a flowable) ─────────────────────
+def _draw_cover(canv: rl_canvas.Canvas, doc: SimpleDocTemplate) -> None:
+    """Paint the cover page in UPM orange + blue palette on page 1 only."""
+    if doc.page != 1:
+        return
+    canv.saveState()
+
+    # ── Background: white base ────────────────────────────────────────────────
+    canv.setFillColor(WHITE)
+    canv.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+
+    # ── Top UPM-blue band (upper ~38 % of page) ───────────────────────────────
+    canv.setFillColor(NAVY)                                   # #002D62
+    canv.rect(0, PAGE_H * 0.62, PAGE_W, PAGE_H * 0.38, fill=1, stroke=0)
+
+    # ── Thin orange accent stripe at the bottom of the blue band ─────────────
+    canv.setFillColor(ORANGE)
+    canv.rect(0, PAGE_H * 0.62 - 5, PAGE_W, 5, fill=1, stroke=0)
+
+    # ── Bottom UPM-blue band (lower ~18 % of page) ────────────────────────────
+    canv.setFillColor(colors.HexColor("#005A9C"))             # mid UPM blue
+    canv.rect(0, 0, PAGE_W, PAGE_H * 0.18, fill=1, stroke=0)
+
+    # ── Thin orange accent stripe at the top of the bottom band ──────────────
+    canv.setFillColor(ORANGE)
+    canv.rect(0, PAGE_H * 0.18, PAGE_W, 5, fill=1, stroke=0)
+
+    # ── Title (inside blue top band) ──────────────────────────────────────────
+    canv.setFont("Helvetica-Bold", 28)
+    canv.setFillColor(WHITE)
+    canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.76, "Residual Capacity Platform")
+
+    # ── Subtitle (inside blue top band) ──────────────────────────────────────
+    canv.setFont("Helvetica", 12)
+    canv.setFillColor(colors.HexColor("#c8dff0"))             # light blue tint
+    canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.71,
+                           "Concrete Durability & Structural Capacity Report")
+
+    # ── Orange version badge (white area, centred) ────────────────────────────
+    badge_y = PAGE_H * 0.55
+    canv.setFillColor(ORANGE)
+    canv.roundRect(PAGE_W / 2 - 24, badge_y, 48, 17, 8, fill=1, stroke=0)
+    canv.setFont("Helvetica-Bold", 9)
+    canv.setFillColor(WHITE)
+    canv.drawCentredString(PAGE_W / 2, badge_y + 5, "v2.0")
+
+    # ── Date (white area) ─────────────────────────────────────────────────────
+    canv.setFont("Helvetica", 10)
+    canv.setFillColor(NAVY)
+    canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.50,
+                           datetime.date.today().strftime("%d %B %Y"))
+
+    # ── Author / institution block (white area) ───────────────────────────────
+    canv.setFont("Helvetica-Bold", 9)
+    canv.setFillColor(colors.HexColor("#005A9C"))
+    canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.44,
+                           "Gabriela García-Parga")
+    canv.setFont("Helvetica", 9)
+    canv.setFillColor(DGRAY)
+    canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.41,
+                           "Master's Thesis · Universidad Politécnica de Madrid · 2026")
+    canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.385,
+                           "Supervisors: María del Mar Corral & Leonardo Todisco")
+
+    # ── UPM label inside bottom blue band ────────────────────────────────────
+    canv.setFont("Helvetica-Bold", 10)
+    canv.setFillColor(WHITE)
+    canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.09,
+                           "Universidad Politécnica de Madrid")
+    canv.setFont("Helvetica", 8)
+    canv.setFillColor(colors.HexColor("#c8dff0"))
+    canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.065,
+                           "E.T.S. de Ingenieros de Caminos, Canales y Puertos")
+
+    canv.restoreState()
+
+
+# ── KV table helper ───────────────────────────────────────────────────────────
+def _kv_table(rows: list[tuple[str, Any]], styles: dict) -> Table:
+    """Build a two-column key/value parameter table."""
+    data = [[Paragraph(fmt_var(k), styles["kv_key"]),
+             Paragraph(str(v),     styles["kv_val"])]
+            for k, v in rows]
+    col_w = (PAGE_W - 2 * MARGIN) / 2
+    tbl = Table(data, colWidths=[col_w * 0.45, col_w * 0.55])
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), LGRAY),
+        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [WHITE, LGRAY]),
+        ("GRID",       (0, 0), (-1, -1), 0.3, MGRAY),
+        ("LEFTPADDING",  (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING",   (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING",(0, 0), (-1, -1), 3),
+        ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    return tbl
+
+
+# ── DataFrame → ReportLab Table ───────────────────────────────────────────────
+def _df_table(df, styles: dict, col_labels: list[str] | None = None) -> Table:
+    """Convert a pandas DataFrame to a styled ReportLab Table."""
+    import pandas as pd  # noqa: PLC0415
+
+    if df is None or (hasattr(df, "empty") and df.empty):
+        return Paragraph("No data available.", styles["body"])
+
+    cols = col_labels or list(df.columns)
+
+    # Header paragraphs use a white-on-blue style (overridden in TableStyle below)
+    header_style = ParagraphStyle(
+        "tbl_header", parent=styles["kv_key"],
+        textColor=WHITE, fontName=_BODY_FONT_BOLD,
+    )
+    header = [Paragraph(c, header_style) for c in cols]
+
+    def _fmt_cell(val) -> str:
+        """Format numeric values to 1 decimal place; leave strings as-is."""
+        try:
+            f = float(val)
+            return f"{f:.1f}"
+        except (TypeError, ValueError):
+            return str(val) if val is not None else "—"
+
+    body_rows = [
+        [Paragraph(_fmt_cell(row[c]), styles["kv_val"]) for c in df.columns]
+        for _, row in df.iterrows()
+    ]
+    data = [header] + body_rows
+    avail_w = PAGE_W - 2 * MARGIN
+    col_w = avail_w / len(cols)
+    tbl = Table(data, colWidths=[col_w] * len(cols), repeatRows=1)
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND",   (0, 0), (-1, 0), BLUE),
+        ("TEXTCOLOR",    (0, 0), (-1, 0), WHITE),
+        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [WHITE, LGRAY]),
+        ("GRID",         (0, 0), (-1, -1), 0.3, MGRAY),
+        ("LEFTPADDING",  (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING",   (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING",(0, 0), (-1, -1), 3),
+        ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    return tbl
+
+
+# ── Section divider ───────────────────────────────────────────────────────────
+def _section(title: str, styles: dict) -> list:
+    return [
+        Spacer(1, 10),
+        HRFlowable(width="100%", thickness=2, color=ORANGE, spaceAfter=4),
+        Paragraph(title, styles["section_h"]),
+    ]
+
+
+# ── Main PDF builder ──────────────────────────────────────────────────────────
+def build_pdf(state: dict) -> bytes:
+    """
+    Build the full PDF report and return it as bytes.
+
+    Parameters
+    ----------
+    state : dict
+        Dictionary produced by app.py containing all figures, dataframes,
+        and scalar parameters needed for the report.
+    """
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=MARGIN, rightMargin=MARGIN,
+        topMargin=2.2 * cm, bottomMargin=1.8 * cm,
+        title="Residual Capacity Report",
+        author="RCP v2.0",
+    )
+
+    styles = _build_styles()
+    story: list = []
+
+    # ── Cover page ─────────────────────────────────────────────────────────
+    # The cover is painted entirely on the canvas via _draw_cover().
+    # A single PageBreak is enough to "consume" page 1 and move the story
+    # content to page 2 — no Spacer needed (and a full-height Spacer would
+    # exceed the usable frame height and crash ReportLab).
+    story.append(PageBreak())
+
+    # ── 1. Global Parameters ───────────────────────────────────────────────
+    story += _section("1. Global Parameters", styles)
+    story.append(_kv_table([
+        ("Study time [years]",  state.get("t_global", "—")),
+        (fmt_var("I-corr") + " [µA/cm²]", state.get("icorr_val", "—")),
+        ("Attack type",         state.get("attack_type", "—")),
+        ("Initiation time [y]", f"{state.get('t_ini_calc', 0.0):.2f}"),
+    ], styles))
+    story.append(Spacer(1, 8))
+
+    # ── 2. Initiation Period ───────────────────────────────────────────────
+    story += _section("2. Initiation Period", styles)
+
+    fig_tuutti = state.get("fig_tuutti")
+    fig_ini    = state.get("fig_ini")
+    avail_w    = PAGE_W - 2 * MARGIN
+    chart_h    = 5.5 * cm
+
+    if fig_tuutti or fig_ini:
+        chart_cols = []
+        for fig, cap in [(fig_tuutti, "Tuutti's Model — Pₓ"),
+                         (fig_ini,    "Initiation Progress")]:
+            img = _rl_image(fig, max_width=avail_w / 2 - 4, max_height=chart_h * 2)
+            cell = [img or Paragraph("—", styles["body"]),
+                    Paragraph(cap, styles["caption"])]
+            chart_cols.append(cell)
+        tbl = Table([chart_cols], colWidths=[avail_w / 2] * 2)
+        tbl.setStyle(TableStyle([
+            ("VALIGN",  (0, 0), (-1, -1), "TOP"),
+            ("ALIGN",   (0, 0), (-1, -1), "CENTER"),
+            ("LEFTPADDING",  (0, 0), (-1, -1), 2),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+        ]))
+        story.append(tbl)
     else:
-        with c2:
-            c0 = st.number_input("$C_0$ [%]", value=0.1)
-            cs = st.number_input("$C_s$ [%]", value=4.0)
-        with c3:
-            ccrit = st.number_input("$C_{crit}$ [%]", value=0.6)
-            treal = st.number_input("$T_{real}$ [K]", value=289.6)
-        with c4:
-            tref = st.number_input("$T_{ref}$ [K]", value=293.0)
-            dcrm = st.number_input("$D_{app}$·10⁻¹² [m²/s]", value=1.95, format="%.2e")
-        with c5:
-            a_age = st.number_input("$a$ (ageing) [-]", value=0.4902)
-            b_cl  = st.number_input("$b_{cl}$ [K]", value=4800.0)
-        ke, t0_cl = 1.0, 0.0767
-        t_i, dapp, z, y_vals, t_ini_calc = calc_ini.calcular_cloruros(
-            d_mm, c0, cs, ccrit, b_cl, tref, treal, ke, t0_cl, a_age, dcrm, t_global)
-        y_label, limit_val = "Concentration [%]", ccrit
+        story.append(Paragraph("No initiation charts available.", styles["body"]))
 
-    st.session_state["t_ini_res"] = t_ini_calc if t_ini_calc is not None else 0.0
-    st.divider()
+    story.append(Spacer(1, 8))
 
-    col_m, col_tuutti, col_prog = st.columns([0.8, 2, 2])
-    with col_m:
-        if t_ini_calc and t_ini_calc > 0:
-            st.metric("Initiation Time", f"{t_ini_calc:.2f} yrs")
-            st.metric("Attack Type", attack_type)
-        else:
-            st.warning("⚠️ No initiation detected within study period.")
+    # ── 3. Residual Flexural Capacity ──────────────────────────────────────
+    story += _section("3. Residual Flexural Capacity", styles)
 
-    with col_tuutti:
-        if t_i is not None:
-            t_ini_eff = st.session_state["t_ini_res"]
-            px_vals   = 0.0116 * icorr_val * np.maximum(0, t_i - t_ini_eff)
-            fig_tuutti = go.Figure()
-            fig_tuutti.add_trace(go.Scatter(
-                x=t_i, y=px_vals,
-                line=dict(color="#e17000", width=2.5),
-                fill="tozeroy", fillcolor="rgba(225,112,0,0.08)",
-                name="Pₓ",
-                hovertemplate="%{y:.1f} mm<extra>Pₓ</extra>"))
-            fig_tuutti.update_layout(
-                title=dict(text="Tuutti's Model — Pₓ", font=dict(size=13, color="#005A9C")),
-                height=290, plot_bgcolor="white", paper_bgcolor="white",
-                xaxis=dict(title=dict(text="Time [years]"), **_GRID),
-                yaxis=dict(title=dict(text="Pₓ [mm]"), **_GRID),
-                margin=dict(l=0, r=0, t=44, b=0), font=_FONT)
-            st.plotly_chart(fig_tuutti, use_container_width=True)
+    # Section parameters
+    story.append(Paragraph("Section Parameters", styles["sub_h"]))
+    story.append(_kv_table([
+        ("h [mm]",                  state.get("h_val", "—")),
+        ("b [mm]",                  state.get("b_val", "—")),
+        (fmt_var("f-ck") + " [MPa]", state.get("fck_val", "—")),
+        (fmt_var("f-yk") + " [MPa]", state.get("fyk", "—")),
+        (fmt_var("n-top") + " / Φ_top [mm]",
+         f"{state.get('n_sup','—')} / {state.get('p_sup','—')}"),
+        (fmt_var("n-bot") + " / Φ_bot [mm]",
+         f"{state.get('n_inf','—')} / {state.get('phi_inf_0','—')}"),
+    ], styles))
+    story.append(Spacer(1, 6))
 
-    with col_prog:
-        if t_i is not None:
-            fig_ini = go.Figure()
-            fig_ini.add_trace(go.Scatter(
-                x=t_i, y=y_vals, fill="tozeroy",
-                fillcolor="rgba(0,90,156,0.08)",
-                line=dict(color="#005A9C", width=2.5), name="Progress",
-                hovertemplate="%{y:.1f}<extra>Progress</extra>"))
-            fig_ini.add_trace(go.Scatter(
-                x=t_i, y=[limit_val]*len(t_i),
-                line=dict(color="#e17000", dash="dash", width=1.5), name="Limit",
-                hovertemplate="%{y:.1f}<extra>Limit</extra>"))
-            fig_ini.update_layout(
-                title=dict(text="Initiation Progress", font=dict(size=13, color="#005A9C")),
-                height=290, plot_bgcolor="white", paper_bgcolor="white",
-                xaxis=dict(title=dict(text="Time [years]"), **_GRID),
-                yaxis=dict(title=dict(text=y_label), **_GRID),
-                margin=dict(l=0, r=0, t=44, b=0), font=_FONT,
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-            st.plotly_chart(fig_ini, use_container_width=True)
+    # Capacity chart
+    fig_res = state.get("fig_res")
+    img_res = _rl_image(fig_res, max_width=avail_w, max_height=chart_h * 2.2)
+    if img_res:
+        story.append(img_res)
+        story.append(Paragraph("Fig. 1 — Residual Flexural Capacity over time", styles["caption"]))
+    story.append(Spacer(1, 6))
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 2 — RESIDUAL CAPACITY
-# ══════════════════════════════════════════════════════════════════════════════
-with tab_mc:
-    t_ini_session = st.session_state.get("t_ini_res", 0.0)
-    current_alpha = st.session_state.get("alpha", 2.0)
-    atk_type      = st.session_state.get("attack_type", "Carbonation")
+    # Critical events table
+    df_crit = state.get("df_criticos")
+    if df_crit is not None and not df_crit.empty:
+        story.append(Paragraph("Key Degradation Steps", styles["sub_h"]))
+        story.append(_df_table(
+            df_crit[["Tiempo", "Px", "Mu"]],
+            styles,
+            col_labels=["Time [y]", "Corr. [mm]", "Mu [kNm]"],
+        ))
 
-    st.markdown(
-        f"<div class='info-banner'><b>Initiation:</b> {t_ini_session:.2f} yrs &nbsp;|&nbsp; "
-        f"<b>Type:</b> {atk_type} &nbsp;|&nbsp; <b>α:</b> {current_alpha}</div>",
-        unsafe_allow_html=True)
+    t_life = state.get("t_life")
+    if t_life:
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(
+            f"⚠ <b>End of service life:</b> {t_life:.1f} years",
+            ParagraphStyle("eol", parent=styles["body"],
+                           textColor=ORANGE, fontName="Helvetica-Bold"),
+        ))
 
-    c1, c2, c3, c4, c5, c_viz = st.columns([1, 1, 1, 1, 1, 2])
-    with c1:
-        h_val = st.number_input("h [mm]", value=300, key="h_mc")
-        b_val = st.number_input("b [mm]", value=150, key="b_mc")
-    with c2:
-        rec_sup = st.number_input("$c_{top}$ [mm]", value=20, key="rs_mc")
-        rec_inf = st.number_input("$c_{bot}$ [mm]", value=20, key="ri_mc")
-    with c3:
-        n_sup = st.number_input("$n_{top}$", value=2, min_value=0, key="ns_mc")
-        p_sup = st.number_input("Φ$_{top}$ [mm]", value=10, key="ps_mc")
-    with c4:
-        n_inf     = st.number_input("$n_{bot}$", value=2, min_value=0, key="ni_mc")
-        phi_inf_0 = st.number_input("Φ$_{bot}$ [mm]", value=16, key="pi_mc")
-    with c5:
-        fyk     = st.number_input("$f_{yk}$ [MPa]", value=500, key="fyk_mc")
-        fck_val = st.number_input("$f_{ck}$ [MPa]", value=25,  key="fck_mc")
+    story.append(Spacer(1, 8))
 
-    with c_viz:
-        fig_sec = go.Figure()
-        fig_sec.add_shape(type="rect", x0=0, y0=0, x1=b_val, y1=h_val,
-            line=dict(color="#005A9C", width=2), fillcolor="rgba(0,90,156,0.08)")
-        if n_sup > 0:
-            sp_s = (b_val - 2*rec_sup)/(n_sup-1) if n_sup > 1 else 0
-            xs   = rec_sup if n_sup > 1 else b_val/2
-            for i in range(n_sup):
-                fig_sec.add_trace(go.Scatter(x=[xs+i*sp_s], y=[h_val-rec_sup],
-                    mode="markers", marker=dict(size=p_sup*0.8, color="#2C2C2C"), showlegend=False))
-        if n_inf > 0:
-            sp_i = (b_val - 2*rec_inf)/(n_inf-1) if n_inf > 1 else 0
-            xi   = rec_inf if n_inf > 1 else b_val/2
-            for i in range(n_inf):
-                fig_sec.add_trace(go.Scatter(x=[xi+i*sp_i], y=[rec_inf],
-                    mode="markers", marker=dict(size=phi_inf_0*0.8, color="#e17000"), showlegend=False))
-        fig_sec.update_layout(
-            xaxis=dict(visible=False),
-            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
-            height=180, margin=dict(l=5, r=5, t=5, b=5),
-            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig_sec, use_container_width=True)
+    # ── 4. Prestressed Section ─────────────────────────────────────────────
+    story += _section("4. Prestressed Section", styles)
 
-    st.divider()
+    story.append(Paragraph("Section Parameters", styles["sub_h"]))
+    story.append(_kv_table([
+        ("h [mm]",                   state.get("h_p", "—")),
+        ("b [mm]",                   state.get("b_p", "—")),
+        ("Φ_p [mm]",                 state.get("phi_p_val", "—")),
+        (fmt_var("n-bot"),           state.get("np_p", "—")),
+        (fmt_var("f-py") + " [MPa]", state.get("fpy_p3_val", "—")),
+        (fmt_var("A-e") + " [mm²]",  state.get("ae_p3_val", "—")),
+    ], styles))
+    story.append(Spacer(1, 6))
 
-    t_mc, px_mc, phi_inf_mc, mu_std_mc, mu_cons_mc = calc_mc.calcular_capacidad_residual(
-        t_global, b_val, h_val, rec_sup, rec_inf, n_sup, p_sup, n_inf, phi_inf_0,
-        fyk, fck_val, icorr_val, current_alpha, t_ini_session)
-    t_cv, df_criticos, mu_cv = calc_cv.calcular_contevect(
-        t_global, b_val, h_val, rec_sup, rec_inf, n_inf, phi_inf_0,
-        fyk, fck_val, icorr_val, current_alpha, t_ini_session)
+    # Stress + shear charts side by side
+    fig_stresses = state.get("fig_stresses")
+    fig_shear    = state.get("fig_shear")
+    if fig_stresses or fig_shear:
+        chart_cols = []
+        for fig, cap in [(fig_stresses, "Prestress Evolution"),
+                         (fig_shear,    "Shear Capacity V_Rd")]:
+            img = _rl_image(fig, max_width=avail_w / 2 - 4, max_height=chart_h * 2)
+            cell = [img or Paragraph("—", styles["body"]),
+                    Paragraph(cap, styles["caption"])]
+            chart_cols.append(cell)
+        tbl = Table([chart_cols], colWidths=[avail_w / 2] * 2)
+        tbl.setStyle(TableStyle([
+            ("VALIGN",  (0, 0), (-1, -1), "TOP"),
+            ("ALIGN",   (0, 0), (-1, -1), "CENTER"),
+            ("LEFTPADDING",  (0, 0), (-1, -1), 2),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+        ]))
+        story.append(tbl)
 
-    umbral_px = 0.05 if atk_type == "Carbonation" else 0.5
-    idx_life  = np.where(px_mc >= umbral_px)[0]
-    t_life    = t_mc[idx_life[0]] if len(idx_life) > 0 else None
+    t_life_p3 = state.get("t_life_p3")
+    if t_life_p3:
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(
+            f"⚠ <b>End of service life (prestressed):</b> {t_life_p3:.1f} years",
+            ParagraphStyle("eol2", parent=styles["body"],
+                           textColor=ORANGE, fontName="Helvetica-Bold"),
+        ))
 
-    st.markdown("<div class='section-title'>Residual Flexural Capacity Comparison</div>", unsafe_allow_html=True)
-    col_graph, col_table = st.columns([2, 1])
+    story.append(Spacer(1, 8))
 
-    with col_graph:
-        fig_res = go.Figure()
-        fig_res.add_trace(go.Scatter(x=t_cv, y=mu_cv, name="Contevect Model",
-            line=dict(color="#005A9C", width=2.5),
-            hovertemplate="%{y:.1f} kNm<extra>Contevect</extra>"))
-        fig_res.add_trace(go.Scatter(x=t_mc, y=mu_std_mc, name="MC Standard",
-            line=dict(color="#e17000", width=2.5, dash="dash"),
-            hovertemplate="%{y:.1f} kNm<extra>MC Standard</extra>"))
-        fig_res.add_trace(go.Scatter(x=t_mc, y=mu_cons_mc, name="MC Conservative",
-            line=dict(color="#2c2c2a", width=2.5, dash="dot"),
-            hovertemplate="%{y:.1f} kNm<extra>MC Conservative</extra>"))
-        fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"],
-            mode="markers", name="Critical Events (CV)",
-            marker=dict(color="#005A9C", size=9, symbol="diamond"),
-            hovertemplate="%{y:.1f} kNm<extra>Critical Event</extra>"))
-        _vline_ini(fig_res, t_ini_session)
-        if t_life:
-            _vline_eol(fig_res, t_life)
-        fig_res.update_layout(
-            xaxis=dict(title=dict(text="Time [years]"), rangemode="tozero", **_GRID),
-            yaxis=dict(title=dict(text="Moment Capacity [kNm]"), rangemode="tozero", **_GRID),
-            hovermode="x unified", template="plotly_white", height=460,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            font=_FONT, plot_bgcolor="white", paper_bgcolor="white")
-        st.plotly_chart(fig_res, use_container_width=True)
+    # ── 5. Disclaimer ──────────────────────────────────────────────────────
+    story += _section("5. Disclaimer", styles)
+    story.append(Paragraph(
+        "This report has been generated automatically by the Residual Capacity Platform v2.0. "
+        "The platform was developed in 2026 as part of the Master\'s Thesis entitled "
+        "<i>\'Residual Capacity of Corroded Reinforced and Prestressed Concrete Beams\'</i>, "
+        "prepared by Gabriela García-Parga at the Universidad Politécnica de Madrid. "
+        "The research was supervised by María del Mar Corral and Leonardo Todisco. "
+        "The results presented in this report are intended for academic and research purposes "
+        "only and should not be used as the sole basis for structural design or safety assessments. "
+        "The authors accept no liability for decisions made on the basis of this report.",
+        styles["body"],
+    ))
 
-    with col_table:
-        st.markdown(
-            "<div style='font-size:11px;font-weight:700;color:#005A9C;text-transform:uppercase;"
-            "letter-spacing:.8px;margin-bottom:8px;'>Key Degradation Steps</div>",
-            unsafe_allow_html=True)
-        st.dataframe(df_criticos[["Tiempo", "Px", "Mu"]],
-            column_config={
-                "Tiempo": st.column_config.NumberColumn("Time [y]",   format="%.1f"),
-                "Px":     st.column_config.NumberColumn("Corr. [mm]", format="%.3f"),
-                "Mu":     st.column_config.NumberColumn("Mᵤ [kNm]",   format="%.2f"),
-            }, hide_index=True, use_container_width=True)
-        if t_life:
-            st.markdown(
-                f"<div class='eol-badge'>⚠️ <b>End of service life:</b> {t_life:.1f} years</div>",
-                unsafe_allow_html=True)
+    # ── Build PDF ──────────────────────────────────────────────────────────
+    # onFirstPage draws the cover; onLaterPages draws the running header/footer.
+    doc.build(story, onFirstPage=_draw_cover, onLaterPages=_on_page)
+    return buf.getvalue()
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 3 — PRESTRESSED SECTION
-# ══════════════════════════════════════════════════════════════════════════════
-with tab_pret:
-    t_ini_session = st.session_state.get("t_ini_res", 0.0)
-    current_alpha = st.session_state.get("alpha", 2.0)
-    atk_type      = st.session_state.get("attack_type", "Carbonation")
 
-    st.markdown(
-        f"<div class='info-banner'><b>Initiation:</b> {t_ini_session:.2f} yrs &nbsp;|&nbsp; "
-        f"<b>Type:</b> {atk_type}</div>",
-        unsafe_allow_html=True)
-
-    c1, c2, c3, c4, c5, c6, c_viz = st.columns([1, 1, 1, 1, 1, 1, 2.5])
-    with c1:
-        h_p = st.number_input("h [mm]", value=h_val, key="h_p3")
-        b_p = st.number_input("b [mm]", value=b_val, key="b_p3")
-    with c2:
-        rs_p = st.number_input("$c_{top}$ [mm]", value=rec_sup, key="rs_p3")
-        ri_p = st.number_input("$c_{bot}$ [mm]", value=rec_inf, key="ri_p3")
-    with c3:
-        nt_p = st.number_input("$n_{top}$", value=n_sup, key="nt_p3")
-        pt_p = st.number_input("Φ$_{top}$ [mm]", value=p_sup, key="pt_p3")
-    with c4:
-        np_p      = st.number_input("$n_{bot}$", value=2, key="np_p3")
-        phi_p_val = st.number_input("Φ$_p$ [mm]", value=14.0, key="phip_p3")
-    with c5:
-        ae_p3_val  = st.number_input("$A_e$ [mm²]", value=92.0, key="ae_p3_key")
-        fpy_p3_val = st.number_input("$f_{py}$ [MPa]", value=1860, key="fpy_p3_key")
-    with c6:
-        fyk_p = st.number_input("$f_{yk}$ [MPa]", value=fyk,     key="fyk_p3")
-        fck_p = st.number_input("$f_{ck}$ [MPa]", value=fck_val, key="fck_p3")
-
-    with st.expander("Shear inputs", expanded=False):
-        cv1, cv2, cv3 = st.columns([1, 1, 1])
-        with cv1:
-            v_ed_val = st.number_input("$V_{Ed}$ [kN]",  value=0.0, key="ved_p3")
-            m_ed_val = st.number_input("$M_{Ed}$ [kNm]", value=0.0, key="med_p3")
-        with cv2:
-            gamma_v_val = st.number_input("γ$_V$",              value=1.4,  key="gv_p3")
-            d_lower_val = st.number_input("$d_{lower}$ [mm]",   value=12.0, key="dl_p3")
-
-    with c_viz:
-        fig_sec_p = go.Figure()
-        fig_sec_p.add_shape(type="rect", x0=0, y0=0, x1=b_p, y1=h_p,
-            line=dict(color="#005A9C", width=2), fillcolor="rgba(0,90,156,0.08)")
-        if nt_p > 0:
-            sp_s = (b_p - 2*rs_p)/(nt_p-1) if nt_p > 1 else 0
-            xs   = rs_p if nt_p > 1 else b_p/2
-            for i in range(nt_p):
-                fig_sec_p.add_trace(go.Scatter(x=[xs+i*sp_s], y=[h_p-rs_p],
-                    mode="markers", marker=dict(size=pt_p*0.8, color="#2C2C2C"), showlegend=False))
-        y_pre = (h_p/2) - ae_p3_val
-        if np_p > 0:
-            sp_p = (b_p - 2*ri_p)/(np_p-1) if np_p > 1 else 0
-            xp   = ri_p if np_p > 1 else b_p/2
-            for i in range(np_p):
-                fig_sec_p.add_trace(go.Scatter(x=[xp+i*sp_p], y=[y_pre],
-                    mode="markers", marker=dict(size=phi_p_val*1.1, color="#005A9C"), showlegend=False))
-        fig_sec_p.update_layout(
-            xaxis=dict(visible=False),
-            yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
-            height=180, margin=dict(l=5, r=5, t=5, b=5),
-            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig_sec_p, use_container_width=True)
-
-    st.divider()
-
-    # ── Calculations ──────────────────────────────────────────────────────────
-    params_p3 = dict(
-        t_global=t_global, t_ini=t_ini_session, h=h_p, bw=b_p,
-        phi_p0=phi_p_val, n_p=np_p, fpy=fpy_p3_val, Ae=ae_p3_val,
-        icorr=icorr_val, alpha=current_alpha)
-    res_tensiones = calc_pre.calcular_tensiones_pretensado(params_p3)
-    df_t = pd.DataFrame(res_tensiones)
-
-    params_cor = dict(
-        t_global=t_global, t_ini=t_ini_session, h=h_p, bw=b_p,
-        c_bot=ri_p, n_p=np_p, phi_p0=phi_p_val, fpy=fpy_p3_val, Ae=ae_p3_val,
-        fck=fck_p, icorr=icorr_val, alpha=current_alpha,
-        v_ed=v_ed_val, m_ed=m_ed_val, gamma_v=gamma_v_val, d_lower=d_lower_val)
-    res_cor = calc_cor.calcular_cortante_pretensado(params_cor)
-    df_cor  = pd.DataFrame(res_cor)
-
-    umbral_px_p3 = 0.05 if atk_type == "Carbonation" else 0.5
-    idx_life_p3  = df_t[df_t["px"] >= umbral_px_p3]
-    t_life_p3    = idx_life_p3["t"].iloc[0] if not idx_life_p3.empty else None
-
-    # ── Charts ────────────────────────────────────────────────────────────────
-    col_stress, col_shear = st.columns(2)
-
-    with col_stress:
-        st.markdown("<div class='section-title'>Prestress Evolution</div>", unsafe_allow_html=True)
-        fig_stresses = go.Figure()
-        fig_stresses.add_trace(go.Scatter(
-            x=df_t["t"], y=df_t["sigma_inferior"],
-            name="σ<sub>bot</sub>", line=dict(color="#e17000", width=2.5),
-            hovertemplate="%{y:.1f} MPa<extra>σ bot</extra>"))
-        fig_stresses.add_trace(go.Scatter(
-            x=df_t["t"], y=df_t["sigma_superior"],
-            name="σ<sub>top</sub>", line=dict(color="#005A9C", width=2.5),
-            hovertemplate="%{y:.1f} MPa<extra>σ top</extra>"))
-        _vline_ini(fig_stresses, t_ini_session)
-        if t_life_p3:
-            _vline_eol(fig_stresses, t_life_p3)
-        fig_stresses.update_layout(
-            xaxis=dict(title=dict(text="Time [years]"), rangemode="tozero", **_GRID),
-            yaxis=dict(title=dict(text="Stress [MPa]"), rangemode="tozero", **_GRID),
-            hovermode="x unified", template="plotly_white", height=430,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            font=_FONT, plot_bgcolor="white", paper_bgcolor="white")
-        st.plotly_chart(fig_stresses, use_container_width=True)
-
-    with col_shear:
-        st.markdown(
-            "<div class='section-title'>Shear Capacity V<sub>Rd</sub></div>",
-            unsafe_allow_html=True)
-        fig_shear = go.Figure()
-        fig_shear.add_trace(go.Scatter(
-            x=df_cor["t"], y=df_cor["vrd"],
-            name="V<sub>Rd</sub>", line=dict(color="#005A9C", width=2.5),
-            hovertemplate="%{y:.1f} kN<extra>V_Rd</extra>"))
-        if v_ed_val > 0:
-            fig_shear.add_hline(
-                y=v_ed_val, line_dash="dot",
-                line_color="#e17000", line_width=1.5,
-                annotation_text=f"V_Ed = {v_ed_val:.1f} kN",
-                annotation_position="top right",
-                annotation_font=dict(color="#e17000"))
-        _vline_ini(fig_shear, t_ini_session)
-        if t_life_p3:
-            _vline_eol(fig_shear, t_life_p3)
-        fig_shear.update_layout(
-            xaxis=dict(title=dict(text="Time [years]"), rangemode="tozero", **_GRID),
-            yaxis=dict(title=dict(text="Shear [kN]"), rangemode="tozero", **_GRID),
-            hovermode="x unified", template="plotly_white", height=430,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            font=_FONT, plot_bgcolor="white", paper_bgcolor="white")
-        st.plotly_chart(fig_shear, use_container_width=True)
-
-# ══════════════════════════════════════════════════════════════════════════════
-# PDF STATE + FLOATING BUTTON (outside all tabs)
-# ══════════════════════════════════════════════════════════════════════════════
-pdf_state = {
-    # Global
-    "t_global":     t_global,
-    "icorr_val":    icorr_val,
-    "attack_type":  st.session_state.get("attack_type", "Carbonation"),
-    "t_ini_calc":   st.session_state.get("t_ini_res", 0.0),
-    # Tab 1
-    "fig_tuutti":   fig_tuutti   if "fig_tuutti"   in dir() else None,
-    "fig_ini":      fig_ini      if "fig_ini"       in dir() else None,
-    # Tab 2
-    "fig_res":      fig_res      if "fig_res"       in dir() else None,
-    "df_criticos":  df_criticos  if "df_criticos"   in dir() else None,
-    "b_val": b_val, "h_val": h_val,
-    "fck_val": fck_val, "fyk": fyk,
-    "n_sup": n_sup, "p_sup": p_sup,
-    "n_inf": n_inf, "phi_inf_0": phi_inf_0,
-    "t_life":       t_life       if "t_life"        in dir() else None,
-    # Tab 3
-    "fig_stresses": fig_stresses if "fig_stresses"  in dir() else None,
-    "fig_shear":    fig_shear    if "fig_shear"      in dir() else None,
-    "df_t":         df_t         if "df_t"           in dir() else None,
-    "df_cor":       df_cor       if "df_cor"         in dir() else None,
-    "h_p": h_p, "b_p": b_p,
-    "phi_p_val": phi_p_val, "np_p": np_p,
-    "fpy_p3_val": fpy_p3_val, "ae_p3_val": ae_p3_val,
-    "t_life_p3":    t_life_p3    if "t_life_p3"     in dir() else None,
-}
-
-render_pdf_button(pdf_state)
+# ── Streamlit button ──────────────────────────────────────────────────────────
+def render_pdf_button(state: dict) -> None:
+    """Render a floating Streamlit download button that triggers PDF generation."""
+    try:
+        pdf_bytes = build_pdf(state)
+        filename  = (
+            f"RCP_Report_{datetime.date.today().strftime('%Y%m%d')}.pdf"
+        )
+        st.download_button(
+            label="⬇ Download PDF Report",
+            data=pdf_bytes,
+            file_name=filename,
+            mime="application/pdf",
+        )
+    except Exception as exc:
+        st.error(f"PDF generation failed: {exc}")
