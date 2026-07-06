@@ -9,7 +9,7 @@ from calculos import Contevect as calc_cv
 from calculos import Cortante as calc_cor  
 from calculos import pretensado as calc_pre
 from calculos import Cortantee as calc_cor
-from pdf_report import render_pdf_button #puedo cambiar esto 
+from report import render_pdf_button #puedo cambiar esto 
 
 # --- CONFIGURACIÓN Y ESTILO ---
 st.set_page_config(page_title="Concrete Durability & Structural Capacity Tool", layout="wide")
