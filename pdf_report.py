@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import io
@@ -457,10 +455,10 @@ def build_pdf(state: dict) -> bytes:
     story: list = []
 
     # ── Cover page ─────────────────────────────────────────────────────────
-    # The cover is painted entirely via _draw_cover() in the page callback.
-    # We push a single blank spacer so the first page is "consumed" and the
-    # content starts on page 2.  NO duplicate cover is added here.
-    story.append(Spacer(1, PAGE_H - 2 * MARGIN))
+    # The cover is painted entirely on the canvas via _draw_cover().
+    # A single PageBreak is enough to "consume" page 1 and move the story
+    # content to page 2 — no Spacer needed (and a full-height Spacer would
+    # exceed the usable frame height and crash ReportLab).
     story.append(PageBreak())
 
     # ── 1. Global Parameters ───────────────────────────────────────────────
