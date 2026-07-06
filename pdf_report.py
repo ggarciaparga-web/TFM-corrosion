@@ -60,8 +60,8 @@ _BODY_FONT      = _register_unicode_font()
 _BODY_FONT_BOLD = _BODY_FONT + "-Bold" if _BODY_FONT != "Helvetica" else "Helvetica-Bold"
 
 # ── Colour palette ────────────────────────────────────────────────────────────
-NAVY   = colors.HexColor("#1A2B3C")
-BLUE   = colors.HexColor("#1f4e79")
+NAVY   = colors.HexColor("#002D62")
+BLUE   = colors.HexColor("#005A9C")
 ORANGE = colors.HexColor("#e17000")
 LGRAY  = colors.HexColor("#f4f6f9")
 MGRAY  = colors.HexColor("#e2e6ea")
@@ -446,9 +446,24 @@ def _df_table(df, styles: dict, col_labels: list[str] | None = None) -> Table:
         return Paragraph("No data available.", styles["body"])
 
     cols = col_labels or list(df.columns)
-    header = [Paragraph(c, styles["kv_key"]) for c in cols]
+
+    # Header paragraphs use a white-on-blue style (overridden in TableStyle below)
+    header_style = ParagraphStyle(
+        "tbl_header", parent=styles["kv_key"],
+        textColor=WHITE, fontName=_BODY_FONT_BOLD,
+    )
+    header = [Paragraph(c, header_style) for c in cols]
+
+    def _fmt_cell(val) -> str:
+        """Format numeric values to 1 decimal place; leave strings as-is."""
+        try:
+            f = float(val)
+            return f"{f:.1f}"
+        except (TypeError, ValueError):
+            return str(val) if val is not None else "—"
+
     body_rows = [
-        [Paragraph(str(row[c]), styles["kv_val"]) for c in df.columns]
+        [Paragraph(_fmt_cell(row[c]), styles["kv_val"]) for c in df.columns]
         for _, row in df.iterrows()
     ]
     data = [header] + body_rows
