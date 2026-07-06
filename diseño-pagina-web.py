@@ -36,7 +36,7 @@ def fmt_var(label: str) -> str:
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Residual Capacity Platform",
-    #page_icon="🏗️",
+    page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -318,9 +318,9 @@ if "alpha"       not in st.session_state: st.session_state["alpha"]       = 2.0
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 tab_ini, tab_mc, tab_pret = st.tabs([
-    " Initiation Period",
-    " Residual Capacity",
-    " Prestressed Section",
+    "📐  Initiation Period",
+    "📊  Residual Capacity",
+    "🔩  Prestressed Section",
 ])
 
 # ── Shared plot style helpers ─────────────────────────────────────────────────
@@ -416,7 +416,8 @@ with tab_ini:
                 x=t_i, y=px_vals,
                 line=dict(color="#e17000", width=2.5),
                 fill="tozeroy", fillcolor="rgba(225,112,0,0.08)",
-                name="Pₓ"))
+                name="Pₓ",
+                hovertemplate="%{y:.1f} mm<extra>Pₓ</extra>"))
             fig_tuutti.update_layout(
                 title=dict(text="Tuutti's Model — Pₓ", font=dict(size=13, color="#1f4e79")),
                 height=290, plot_bgcolor="white", paper_bgcolor="white",
@@ -431,10 +432,12 @@ with tab_ini:
             fig_ini.add_trace(go.Scatter(
                 x=t_i, y=y_vals, fill="tozeroy",
                 fillcolor="rgba(31,78,121,0.08)",
-                line=dict(color="#1f4e79", width=2.5), name="Progress"))
+                line=dict(color="#1f4e79", width=2.5), name="Progress",
+                hovertemplate="%{y:.1f}<extra>Progress</extra>"))
             fig_ini.add_trace(go.Scatter(
                 x=t_i, y=[limit_val]*len(t_i),
-                line=dict(color="#e17000", dash="dash", width=1.5), name="Limit"))
+                line=dict(color="#e17000", dash="dash", width=1.5), name="Limit",
+                hovertemplate="%{y:.1f}<extra>Limit</extra>"))
             fig_ini.update_layout(
                 title=dict(text="Initiation Progress", font=dict(size=13, color="#1f4e79")),
                 height=290, plot_bgcolor="white", paper_bgcolor="white",
@@ -516,14 +519,18 @@ with tab_mc:
     with col_graph:
         fig_res = go.Figure()
         fig_res.add_trace(go.Scatter(x=t_cv, y=mu_cv, name="Contevect Model",
-            line=dict(color="#1f4e79", width=2.5)))
+            line=dict(color="#1f4e79", width=2.5),
+            hovertemplate="%{y:.1f} kNm<extra>Contevect</extra>"))
         fig_res.add_trace(go.Scatter(x=t_mc, y=mu_std_mc, name="MC Standard",
-            line=dict(color="#e17000", width=2.5, dash="dash")))
+            line=dict(color="#e17000", width=2.5, dash="dash"),
+            hovertemplate="%{y:.1f} kNm<extra>MC Standard</extra>"))
         fig_res.add_trace(go.Scatter(x=t_mc, y=mu_cons_mc, name="MC Conservative",
-            line=dict(color="#2c2c2a", width=2.5, dash="dot")))
+            line=dict(color="#2c2c2a", width=2.5, dash="dot"),
+            hovertemplate="%{y:.1f} kNm<extra>MC Conservative</extra>"))
         fig_res.add_trace(go.Scatter(x=df_criticos["Tiempo"], y=df_criticos["Mu"],
             mode="markers", name="Critical Events (CV)",
-            marker=dict(color="#1f4e79", size=9, symbol="diamond")))
+            marker=dict(color="#1f4e79", size=9, symbol="diamond"),
+            hovertemplate="%{y:.1f} kNm<extra>Critical Event</extra>"))
         _vline_ini(fig_res, t_ini_session)
         if t_life:
             _vline_eol(fig_res, t_life)
@@ -648,11 +655,11 @@ with tab_pret:
         fig_stresses.add_trace(go.Scatter(
             x=df_t["t"], y=df_t["sigma_inferior"],
             name="σ Bottom", line=dict(color="#e17000", width=2.5),
-            hovertemplate="%{y:.1f} MPa"))
+            hovertemplate="%{y:.1f} MPa<extra>σ Bottom</extra>"))
         fig_stresses.add_trace(go.Scatter(
             x=df_t["t"], y=df_t["sigma_superior"],
             name="σ Top", line=dict(color="#1f4e79", width=2.5),
-            hovertemplate="%{y:.1f} MPa"))
+            hovertemplate="%{y:.1f} MPa<extra>σ Top</extra>"))
         _vline_ini(fig_stresses, t_ini_session)
         if t_life_p3:
             _vline_eol(fig_stresses, t_life_p3)
@@ -672,7 +679,7 @@ with tab_pret:
         fig_shear.add_trace(go.Scatter(
             x=df_cor["t"], y=df_cor["vrd"],
             name="V<sub>Rd</sub>", line=dict(color="#1f4e79", width=2.5),
-            hovertemplate="%{y:.2f} kN"))
+            hovertemplate="%{y:.1f} kN<extra>V_Rd</extra>"))
         if v_ed_val > 0:
             fig_shear.add_hline(
                 y=v_ed_val, line_dash="dot",
