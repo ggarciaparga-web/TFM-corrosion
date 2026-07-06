@@ -11,14 +11,20 @@ from calculos import Cortantee as calc_cor  # noqa: F811 – intentional re-impo
 from pdf_report import render_pdf_button
 
 # ── Unicode subscript helper ──────────────────────────────────────────────────
-_SUB_MAP = str.maketrans("0123456789abcdefghijklmnopqrstuvwxyz",
-                          "₀₁₂₃₄₅₆₇₈₉ₐᵦ꜀ᵈₑ꜁ᵍₕᵢⱼₖₗₘₙₒₚ꜀ᵣₛₜᵤᵥ𝓌ₓᵧ𝓏")
+# Only use subscript characters that are universally supported in all browsers.
+# Digits 0-9 and the most common letters (a, e, i, n, o, r, s, u, v, x) have
+# proper Unicode subscript codepoints. All others fall back to normal characters.
+_SUB_MAP = str.maketrans(
+    "0123456789aeinorsuv x",
+    "₀₁₂₃₄₅₆₇₈₉ₐₑᵢₙₒᵣₛᵤᵥ ₓ",
+)
 
 def fmt_var(label: str) -> str:
     """Convert 'X-i' style labels to 'Xᵢ' using Unicode subscripts.
 
-    Any token of the form  <Base>-<suffix>  where suffix is alphanumeric
-    is rendered with the suffix as a Unicode subscript.
+    Only digits and the letters a, e, i, n, o, r, s, u, v, x have proper
+    Unicode subscript codepoints — all others are left as normal characters
+    to avoid rendering as dark boxes in PDF or unsupported environments.
     """
     import re
     def _replace(m):
@@ -38,12 +44,15 @@ st.set_page_config(
 # ── Polished CSS ──────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 /* ── Base ── */
 html, body, [class*="css"] {
-    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
     color: #1A1A1A;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
 }
 .main .block-container {
     background: #f4f6f9;
@@ -114,11 +123,11 @@ html, body, [class*="css"] {
 
 /* ── Section title ── */
 .section-title {
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
     color: #1f4e79;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
+    letter-spacing: 1px;
     border-bottom: 2px solid #e17000;
     padding-bottom: 7px;
     margin-bottom: 16px;
@@ -131,7 +140,7 @@ html, body, [class*="css"] {
     border-left: 3px solid #e17000;
     padding: 10px 14px;
     border-radius: 0 6px 6px 0;
-    font-size: 12px;
+    font-size: 13px;
     box-shadow: 0 1px 4px rgba(225,112,0,0.1);
 }
 
@@ -147,14 +156,15 @@ html, body, [class*="css"] {
     height: 48px;
     background: transparent;
     border-radius: 0;
-    color: #666;
+    color: #555;
     padding: 0 30px;
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 500;
     border: none;
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
     transition: color 0.15s, background 0.15s;
+    letter-spacing: 0.2px;
 }
 .stTabs [aria-selected="true"] {
     background: transparent !important;
@@ -185,11 +195,11 @@ html, body, [class*="css"] {
     box-shadow: 0 4px 14px rgba(0,0,0,0.1);
 }
 [data-testid="stMetricLabel"] {
-    font-size: 10px !important;
-    font-weight: 700 !important;
-    color: #999 !important;
+    font-size: 10.5px !important;
+    font-weight: 600 !important;
+    color: #888 !important;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
 }
 [data-testid="stMetricValue"] {
     font-size: 22px !important;
@@ -199,16 +209,15 @@ html, body, [class*="css"] {
 
 /* ── Number inputs ── */
 [data-testid="stNumberInput"] label {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    color: #555;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
+    color: #444;
+    letter-spacing: 0.2px;
 }
 [data-testid="stNumberInput"] input {
     border-radius: 5px;
     border: 1px solid #d0d5dd;
-    font-size: 13px;
+    font-size: 13.5px;
     background: #ffffff;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -225,11 +234,10 @@ html, body, [class*="css"] {
     box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 [data-testid="stExpander"] summary {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #1f4e79;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.3px;
 }
 
 /* ── DataFrame ── */
@@ -316,7 +324,7 @@ tab_ini, tab_mc, tab_pret = st.tabs([
 ])
 
 # ── Shared plot style helpers ─────────────────────────────────────────────────
-_FONT = dict(family="Inter, Helvetica Neue, Arial", size=11)
+_FONT = dict(family="'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif", size=11)
 _GRID = dict(showgrid=True, gridcolor="#ebebeb", gridwidth=1)
 
 def _vline_ini(fig, x):
