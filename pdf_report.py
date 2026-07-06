@@ -432,3 +432,57 @@ def build_pdf(state: dict[str, Any]) -> bytes:
     # ── Build ─────────────────────────────────────────────────────────────────
     doc.build(story)
     return buf.getvalue()
+
+
+# ── Función pública que añade el botón a Streamlit ────────────────────────────
+def render_pdf_button(state: dict[str, Any]) -> None:
+    """
+    Renderiza un botón flotante en la esquina superior derecha de la página
+    que genera y descarga el informe PDF.
+
+    Llama a esta función AL FINAL de tu app.py, fuera de cualquier pestaña:
+
+        from pdf_report import render_pdf_button
+        render_pdf_button(state)
+
+    `state` debe contener las claves descritas en build_pdf().
+    """
+    # Botón flotante (posición fija, esquina superior derecha)
+    st.markdown("""
+    <style>
+    div[data-testid="stDownloadButton"] > button {
+        position: fixed;
+        top: 60px;
+        right: 24px;
+        z-index: 9999;
+        background-color: #e17000;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    div[data-testid="stDownloadButton"] > button:hover {
+        background-color: #c45e00;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Generamos el PDF sólo cuando el usuario pulsa el botón
+    with st.spinner("Generating PDF report…"):
+        try:
+            pdf_bytes = build_pdf(state)
+            filename  = f"residual_capacity_{datetime.date.today().strftime('%Y%m%d')}.pdf"
+            st.download_button(
+                label="⬇ Download PDF Report",
+                data=pdf_bytes,
+                file_name=filename,
+                mime="application/pdf",
+                key="pdf_download_btn",
+            )
+        except Exception as exc:
+            st.error(f"❌ Could not generate PDF: {exc}")
