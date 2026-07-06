@@ -1,18 +1,4 @@
-""
-pdf_report.py
-─────────────────────────────────────────────────────────────────────────────
-Generates a multi-section PDF report for the Residual Capacity Platform.
 
-Key design decisions
-────────────────────
-* Charts are rendered to PNG bytes via plotly's `write_image` (kaleido engine).
-  No external wkhtmltopdf / weasyprint / pdfkit dependency is required.
-* If kaleido is unavailable a graceful fallback message is inserted instead of
-  crashing.
-* The cover page is rendered ONCE (duplicate removed).
-* Variable labels that follow the  Base-suffix  convention are displayed with
-  Unicode subscripts in the PDF body text.
-"""
 
 from __future__ import annotations
 
