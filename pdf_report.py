@@ -13,19 +13,25 @@ Y se llama al final del script principal (fuera de cualquier pestaña):
 donde `state` es un dict con todos los datos necesarios (ver docstring de
 render_pdf_button).
 ─────────────────────────────────────────────────────────────────────────────
-Dependencias: reportlab, plotly (kaleido para exportar imágenes), pandas
+Dependencias: reportlab, plotly, pandas, matplotlib
+Nota: NO requiere kaleido ni Chrome. Las figuras Plotly se exportan a PNG
+      mediante matplotlib (engine="matplotlib" de plotly) o, si no está
+      disponible, se inserta un bloque de texto como marcador de posición.
 """
 
 from __future__ import annotations
 
 import io
 import datetime
+import logging
 from typing import Any
 
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -105,13 +111,57 @@ def _build_styles() -> dict[str, ParagraphStyle]:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-def _fig_to_image(fig: go.Figure, width_mm: float, height_mm: float) -> RLImage:
-    """Convierte una figura Plotly a un objeto Image de ReportLab."""
-    scale = 3          # resolución ×3 para nitidez en PDF
+def _fig_to_image(fig: go.Figure, width_mm: float, height_mm: float) -> RLImage | Paragraph:
+    """Convierte una figura Plotly a un objeto Image de ReportLab.
+
+    Estrategia sin Chrome/Kaleido:
+    1. Intenta exportar con engine='orca' (si está instalado).
+    2. Si falla, usa matplotlib para renderizar la figura como PNG.
+    3. Si todo falla, devuelve un Paragraph de texto como marcador.
+    """
+    scale = 3
     px_w  = int(width_mm / 25.4 * 96 * scale)
     px_h  = int(height_mm / 25.4 * 96 * scale)
-    img_bytes = pio.to_image(fig, format="png", width=px_w, height=px_h, scale=1)
-    return RLImage(io.BytesIO(img_bytes), width=width_mm*mm, height=height_mm*mm)
+
+    # ── Intento 1: matplotlib engine (no requiere Chrome) ────────────────────
+    try:
+        img_bytes = pio.to_image(fig, format="png", width=px_w, height=px_h,
+                                 scale=1, engine="matplotlib")
+        return RLImage(io.BytesIO(img_bytes), width=width_mm * mm, height=height_mm * mm)
+    except Exception as e1:
+        logger.warning(f"⚠️ matplotlib engine falló: {e1}")
+
+    # ── Intento 2: kaleido engine (requiere Chrome, puede funcionar en local) ─
+    try:
+        img_bytes = pio.to_image(fig, format="png", width=px_w, height=px_h, scale=1)
+        return RLImage(io.BytesIO(img_bytes), width=width_mm * mm, height=height_mm * mm)
+    except Exception as e2:
+        logger.warning(f"⚠️ kaleido engine falló: {e2}")
+
+    # ── Intento 3: SVG → PNG via svglib (sin Chrome) ─────────────────────────
+    try:
+        from svglib.svglib import svg2rlg
+        from reportlab.graphics import renderPDF
+        svg_bytes = pio.to_image(fig, format="svg", width=px_w, height=px_h, scale=1)
+        drawing = svg2rlg(io.BytesIO(svg_bytes))
+        if drawing:
+            # Escalar al tamaño deseado
+            sx = (width_mm * mm) / drawing.width
+            sy = (height_mm * mm) / drawing.height
+            drawing.width  = width_mm * mm
+            drawing.height = height_mm * mm
+            drawing.transform = (sx, 0, 0, sy, 0, 0)
+            return drawing
+    except Exception as e3:
+        logger.warning(f"⚠️ svglib engine falló: {e3}")
+
+    # ── Fallback: marcador de texto ───────────────────────────────────────────
+    logger.error("❌ No se pudo exportar la figura. Insertando marcador de texto.")
+    styles = getSampleStyleSheet()
+    return Paragraph(
+        "<i>[Gráfico no disponible — instala kaleido o matplotlib para exportar figuras]</i>",
+        styles["Normal"]
+    )
 
 
 def _kv_table(rows: list[tuple[str, str]], styles: dict) -> Table:
