@@ -1,19 +1,3 @@
-"""
-pdf_report.py
-─────────────────────────────────────────────────────────────────────────────
-Generates a multi-section PDF report for the Residual Capacity Platform.
-
-Key design decisions
-────────────────────
-* Charts are rendered to PNG bytes via plotly's `write_image` (kaleido engine).
-  No external wkhtmltopdf / weasyprint / pdfkit dependency is required.
-* If kaleido is unavailable a graceful fallback message is inserted instead of
-  crashing.
-* The cover page is rendered ONCE (duplicate removed).
-* Variable labels that follow the  Base-suffix  convention are displayed with
-  Unicode subscripts in the PDF body text.
-"""
-
 from __future__ import annotations
 
 import io
@@ -451,7 +435,7 @@ def _draw_cover(canv: rl_canvas.Canvas, doc: SimpleDocTemplate) -> None:
     canv.setFont("Helvetica-Bold", 9)
     canv.setFillColor(colors.HexColor("#005A9C"))
     canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.44,
-                           "Gabriela García-Parga")
+                           "Gabriela García Parga")
     canv.setFont("Helvetica", 9)
     canv.setFillColor(DGRAY)
     canv.drawCentredString(PAGE_W / 2, PAGE_H * 0.41,
@@ -641,7 +625,7 @@ def build_pdf(state: dict) -> bytes:
     img_res = _rl_image(fig_res, max_width=avail_w, max_height=chart_h * 2.2)
     if img_res:
         story.append(img_res)
-        story.append(Paragraph("Fig. 1 — Residual Flexural Capacity over time", styles["caption"]))
+        story.append(Paragraph("Figure 1: Residual flexural capacity M<sub>u</sub> over time", styles["caption"]))
     story.append(Spacer(1, 6))
 
     # Critical events table
@@ -672,7 +656,7 @@ def build_pdf(state: dict) -> bytes:
     story.append(_kv_table([
         ("h [mm]",                   state.get("h_p", "—")),
         ("b [mm]",                   state.get("b_p", "—")),
-        ("Φp [mm]",                 state.get("phi_p_val", "—")),
+        ("Φ_p [mm]",                 state.get("phi_p_val", "—")),
         (fmt_var("n-bot"),           state.get("np_p", "—")),
         (fmt_var("f-py") + " [MPa]", state.get("fpy_p3_val", "—")),
         (fmt_var("A-e") + " [mm²]",  state.get("ae_p3_val", "—")),
@@ -684,8 +668,10 @@ def build_pdf(state: dict) -> bytes:
     fig_shear    = state.get("fig_shear")
     if fig_stresses or fig_shear:
         chart_cols = []
-        for fig, cap in [(fig_stresses, "Prestress Evolution"),
-                         (fig_shear,    "Shear Capacity V_Rd")]:
+        for fig, cap in [
+            (fig_stresses, "Figure 2a: Prestress stress evolution (σ<sub>bot</sub> and σ<sub>top</sub>) over time"),
+            (fig_shear,    "Figure 2b: Shear capacity V<sub>Rd</sub> of the prestressed section over time"),
+        ]:
             img = _rl_image(fig, max_width=avail_w / 2 - 4, max_height=chart_h * 2)
             cell = [img or Paragraph("—", styles["body"]),
                     Paragraph(cap, styles["caption"])]
@@ -716,7 +702,7 @@ def build_pdf(state: dict) -> bytes:
         "This report has been generated automatically by the Residual Capacity Platform v2.0. "
         "The platform was developed in 2026 as part of the Master\'s Thesis entitled "
         "<i>\'Residual Capacity of Corroded Reinforced and Prestressed Concrete Beams\'</i>, "
-        "prepared by Gabriela García-Parga at the Universidad Politécnica de Madrid. "
+        "prepared by Gabriela García Parga at the Universidad Politécnica de Madrid. "
         "The research was supervised by María del Mar Corral and Leonardo Todisco. "
         "The results presented in this report are intended for academic and research purposes "
         ,
