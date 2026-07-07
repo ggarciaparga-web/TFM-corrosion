@@ -12,7 +12,7 @@ from calculos import Cortantee as calc_cor
 import pdf_report as render_pdf_button #puedo cambiar esto 
 
 # --- CONFIGURACIÓN Y ESTILO ---
-st.set_page_config(page_title="Concrete Durability & Structural Capacity Tool", layout="wide")
+st.set_page_config(page_title="Concrete durability & Structural capacity tool", layout="wide")
 
 st.markdown("""
     <style>
@@ -194,7 +194,7 @@ with tab_ini:
                 name="Limit"
             ))
             fig_ini.update_layout(
-                title="Initiation Progress",
+                title="Initiation progress",
                 height=280, 
                 plot_bgcolor='white', 
                 xaxis_title="Time [years]", 
@@ -298,24 +298,24 @@ with tab_mc:
 
         fig_res.add_trace(go.Scatter(
             x=t_cv, y=mu_cv,
-            name="Contevect Model",
+            name="Contevect model",
             line=dict(color=COLOR_CV, width=LINE_W)
         ))
         fig_res.add_trace(go.Scatter(
             x=t_mc, y=mu_std_mc,
-            name="MC Standard",
+            name="MC standard",
             line=dict(color=COLOR_STD, width=LINE_W, dash="dash")
         ))
         fig_res.add_trace(go.Scatter(
             x=t_mc, y=mu_cons_mc,
-            name="MC Conservative",
+            name="MC conservative",
             line=dict(color=COLOR_CONS, width=LINE_W, dash="dot")
         ))
         # Puntos críticos Contevect: mismo color que la línea Contevect
         fig_res.add_trace(go.Scatter(
             x=df_criticos["Tiempo"], y=df_criticos["Mu"],
             mode='markers',
-            name='Critical Events (CV)',
+            name='Critical events (CV)',
             marker=dict(color=COLOR_CV, size=10, symbol='diamond')
         ))
 
@@ -357,7 +357,7 @@ with tab_mc:
 
         fig_res.update_layout(
             xaxis_title="Time [years]",
-            yaxis_title="Moment Capacity [kNm]",
+            yaxis_title="Moment capacity [kNm]",
             hovermode="x unified",
             template="plotly_white",
             height=450,
@@ -368,7 +368,7 @@ with tab_mc:
         st.plotly_chart(fig_res, use_container_width=True)
 
     with col_table:
-        st.write("**Key Degradation Steps (Contevect)**")
+        st.write("**Key degradation steps (Contevect)**")
         st.dataframe(
             df_criticos[["Tiempo", "Px", "Mu"]],
             column_config={
