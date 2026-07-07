@@ -154,7 +154,7 @@ with tab_ini:
 
     with res_metrica:
         if t_ini_calc and t_ini_calc > 0: 
-            st.metric("Initiation Time", f"{t_ini_calc:.2f} years")
+            st.metric("Initiation time", f"{t_ini_calc:.2f} years")
         else: 
             st.warning("No initiation detected")
 
@@ -171,7 +171,7 @@ with tab_ini:
                 name="Penetration $P_x$"
             ))
             fig_tuutti.update_layout(
-                title="Tuutti's Model (P<sub>x</sub>)",
+                title="Tuutti's model (P<sub>x</sub>)",
                 height=280, 
                 plot_bgcolor='white', 
                 xaxis_title="Time [years]", 
@@ -284,7 +284,7 @@ with tab_mc:
     idx_life = np.where(px_mc >= umbral_px)[0]
     t_life = t_mc[idx_life[0]] if len(idx_life) > 0 else None
 
-    st.subheader("Residual Flexural Capacity Comparison")
+    st.subheader("Residual flexural capacity comparison")
     col_graph, col_table = st.columns([2, 1])
 
     with col_graph:
@@ -345,7 +345,7 @@ with tab_mc:
                 line_color="#CC0000",
                 line_width=1.5,
                 annotation=dict(
-                    text=f"<b>End of Life<br>{t_life:.1f} years</b>",
+                    text=f"<b>End of life<br>{t_life:.1f} years</b>",
                     font=dict(size=11, color="#CC0000"),
                     bgcolor="rgba(255,255,255,0.7)",
                     borderpad=3,
